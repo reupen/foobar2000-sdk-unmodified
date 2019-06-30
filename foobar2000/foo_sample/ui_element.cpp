@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+
+
 namespace {
 	// Anonymous namespace : standard practice in fb2k components
 	// Nothing outside should have any reason to see these symbols, and we don't want funny results if another cpp has similarly named classes.

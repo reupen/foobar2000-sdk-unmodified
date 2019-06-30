@@ -97,6 +97,13 @@ void winUnPrefixPath(pfc::string_base & out, const char * p_path) {
 	out = p_path;
 }
 
+string8 winPrefixPath(const char * in) {
+	string8 temp; winPrefixPath(temp, in); return temp;
+}
+string8 winUnPrefixPath(const char * in) {
+	string8 temp; winUnPrefixPath(temp, in); return temp;
+}
+
 } // namespace pfc
 
 format_win32_error::format_win32_error(DWORD p_code) {
@@ -192,7 +199,13 @@ bool IsPointInsideControl(const POINT& pt, HWND wnd) {
 		walk = GetParent(walk);
 	}
 }
-
+bool IsPopupWindowChildOf(HWND child, HWND parent) {
+	HWND walk = child;
+	while (walk != parent && walk != NULL) {
+		walk = GetParent(walk);
+	}
+	return walk == parent;
+}
 bool IsWindowChildOf(HWND child, HWND parent) {
 	HWND walk = child;
 	while(walk != parent && walk != NULL && (GetWindowLong(walk,GWL_STYLE) & WS_CHILD) != 0) {
@@ -200,7 +213,12 @@ bool IsWindowChildOf(HWND child, HWND parent) {
 	}
 	return walk == parent;
 }
-
+void ResignActiveWindow(HWND wnd) {
+	if (IsPopupWindowChildOf(GetActiveWindow(), wnd)) {
+		HWND parent = GetParent(wnd);
+		if ( parent != NULL ) SetActiveWindow(parent);
+	}
+}
 void win32_menu::release() {
 	if (m_menu != NULL) {
 		DestroyMenu(m_menu);
