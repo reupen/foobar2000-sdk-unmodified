@@ -5,6 +5,10 @@
 // Or: how I learned to stop worrying and love the lambdas
 
 #include <memory> // shared_ptr
+#include <libPPUI/CDialogResizeHelper.h>
+#include <helpers/filetimetools.h>
+#include <helpers/duration_counter.h>
+#include <helpers/atl-misc.h>
 
 
 
@@ -26,6 +30,13 @@ namespace { // anon namespace local classes for good measure
 		{IDCANCEL,   1,1,1,1 },
 		{IDC_HEADER, 0,0,1,0 },
 		{IDC_LIST,   0,0,1,1 },
+
+		// current position of a control is determined by initial_position + factor * (current_dialog_size - initial_dialog_size)
+		// where factor is the value from the table above
+		// applied to all four values - left, top, right, bottom
+		// 0,0,0,0 means that a control doesn't react to dialog resizing (aligned to top+left, no resize)
+		// 1,1,1,1 means that the control is aligned to bottom+right but doesn't resize
+		// 0,0,1,0 means that the control disregards vertical resize (aligned to top) and changes its width with the dialog
 	};
 	
 	// Minimum/maximum size, in dialog box units; see MSDN MapDialogRect for more info about dialog box units.

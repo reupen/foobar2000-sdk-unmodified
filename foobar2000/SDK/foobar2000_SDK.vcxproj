@@ -13,7 +13,6 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E8091321-D79D-4575-86EF-064EA1A4A20D}</ProjectGuid>
     <RootNamespace>foobar2000_SDK</RootNamespace>
-    <WindowsTargetPlatformVersion>7.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -99,6 +98,7 @@
     <ClInclude Include="album_art.h" />
     <ClInclude Include="album_art_helpers.h" />
     <ClInclude Include="app_close_blocker.h" />
+    <ClInclude Include="archive.h" />
     <ClInclude Include="audio_chunk.h" />
     <ClInclude Include="audio_chunk_impl.h" />
     <ClInclude Include="audio_postprocessor.h" />
@@ -276,6 +276,7 @@
     </ClCompile>
     <ClCompile Include="titleformat.cpp">
     </ClCompile>
+    <ClCompile Include="track_property.cpp" />
     <ClCompile Include="ui.cpp">
     </ClCompile>
     <ClCompile Include="ui_element.cpp" />

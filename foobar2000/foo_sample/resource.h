@@ -6,6 +6,9 @@
 #define IDD_DSP                         102
 #define IDD_UI_ELEMENT                  103
 #define IDD_THREADS                     105
+#define IDD_LISTCONTROL_DEMO            107
+#define IDI_ICON1                       109
+#define IDI_SCROLL                      109
 #define IDD_MYPREFERENCES               148
 #define IDC_BOGO1                       1001
 #define IDC_BOGO2                       1002
@@ -35,7 +38,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        107
+#define _APS_NEXT_RESOURCE_VALUE        110
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1021
 #define _APS_NEXT_SYMED_VALUE           101

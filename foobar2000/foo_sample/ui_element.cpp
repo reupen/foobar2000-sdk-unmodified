@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include <libPPUI/win32_op.h>
+#include <helpers/BumpableElem.h>
 
 
 namespace {
@@ -17,7 +19,7 @@ namespace {
 
 		void initialize_window(HWND parent) {WIN32_OP(Create(parent) != NULL);}
 
-		BEGIN_MSG_MAP(CMyElemWindow)
+		BEGIN_MSG_MAP_EX(CMyElemWindow)
 			MESSAGE_HANDLER(WM_LBUTTONDOWN,OnLButtonDown);
 			MSG_WM_ERASEBKGND(OnEraseBkgnd)
 			MSG_WM_PAINT(OnPaint)
