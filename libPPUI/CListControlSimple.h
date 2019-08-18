@@ -48,11 +48,6 @@ public:
 		}
 		return false;
 	}
-	using CListControlHeaderImpl::AddColumn;
-	using CListControlHeaderImpl::AddColumnAutoWidth;
-	using CListControlHeaderImpl::DeleteColumn;
-	using CListControlHeaderImpl::DeleteColumns;
-	using CListControlHeaderImpl::SetColumn;
 
 	uint32_t QueryDragDropTypes() const override {
 		return (onReordered != nullptr) ? dragDrop_reorder : 0;

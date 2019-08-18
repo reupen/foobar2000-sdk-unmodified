@@ -130,6 +130,12 @@ namespace PaintUtils {
 		CRgnHandle(p_rgn).CombineRgn(temp,RGN_OR);
 	}
 
+	void FocusRect2(CDCHandle dc, CRect const & rect, COLORREF bkColor) throw() {
+		COLORREF txColor = DetermineTextColor( bkColor );
+		COLORREF useColor = BlendColor(bkColor, txColor, 50);
+		CDCBrush brush(dc, useColor);
+		WIN32_OP_D( dc.FrameRect(rect,brush) );
+	}
 	void FocusRect(CDCHandle dc, CRect const & rect) throw() {
 		CDCBrush brush(dc, 0x7F7F7F);
 		WIN32_OP_D( dc.FrameRect(rect,brush) );

@@ -29,7 +29,13 @@ protected:
 	t_size TableEdit_GetColumnCount() const override {return this->GetColumnCount();}
 	void TableEdit_SetItemFocus(t_size item, t_size subItem) override {
 		this->SetFocusItem(item); this->SetSelection(pfc::bit_array_true(), pfc::bit_array_one(item));
-		this->EnsureVisibleRectAbs(this->GetSubItemRectAbs(item,subItem));
+		auto rcView = this->GetVisibleRectAbs();
+		auto rcEdit = this->GetSubItemRectAbs(item,subItem);
+		CRect rcTest;
+		if (!rcTest.IntersectRect(rcView, rcEdit)) {
+			// Only scroll to subitem if entirely invisible
+			this->EnsureVisibleRectAbs( rcEdit );
+		}
 	}
 	void TableEdit_GetColumnOrder(t_size * out, t_size count) const override {
 		PFC_ASSERT( count == this->GetColumnCount() );

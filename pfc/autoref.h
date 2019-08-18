@@ -7,10 +7,12 @@ namespace pfc {
 	template<typename obj_t> class autoref {
 	public:
 		autoref() {}
+		autoref(std::nullptr_t) {}
 		autoref(obj_t * source) {
 			attach(source);
 		}
 		void attach(obj_t * source) {
+			PFC_ASSERT( source != nullptr );
 			m_obj = std::make_shared<holder_t>(source);
 		}
 		void reset() {

@@ -1120,7 +1120,7 @@ size_t string_base::replace_string_ex (string_base & temp, const char * replace,
     size_t srcDone = 0, walk = start;
     size_t occurances = 0;
     const char * const source = this->get_ptr();
-    
+    bool clear = false;
     const size_t replaceLen = strlen( replace );
     for(;;) {
         const char * ptr = strstr( source + walk, replace );
@@ -1134,6 +1134,10 @@ size_t string_base::replace_string_ex (string_base & temp, const char * replace,
         }
         ++occurances;
         walk = ptr - source;
+		if (! clear ) {
+			temp.reset();
+			clear = true;
+		}
         temp.add_string( source + srcDone, walk - srcDone );
         temp.add_string( replaceWith );
         walk += replaceLen;

@@ -252,3 +252,10 @@ private:
 	HDC m_dc;
 	COLORREF m_oldCol;
 };
+
+static CSize GetBitmapSize( HBITMAP bmp ) {
+	CBitmapHandle h ( bmp );
+	BITMAP bm = {};
+	WIN32_OP_D( h.GetBitmap(bm) );
+	return CSize(bm.bmWidth, bm.bmHeight);
+}

@@ -19,6 +19,7 @@ namespace PaintUtils {
 	void AddRectToRgn(HRGN rgn, CRect const & rect) throw();
 
 	void FocusRect(CDCHandle dc, CRect const & rect) throw();
+	void FocusRect2(CDCHandle dc, CRect const & rect, COLORREF bkColor) throw();
 
 	namespace TrackBar {
 		void DrawThumb(HTHEME theme,HDC dc,int state,const RECT * rcThumb, const RECT * rcUpdate);

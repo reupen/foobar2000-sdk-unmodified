@@ -173,9 +173,9 @@ private:
 		return 0;
 	}
 	void CallSelectItem(CTreeViewCtrl tree, HTREEITEM item) {
-		const bool was = m_ownSelChangeNotify; m_ownSelChangeNotify = true;
+		const bool was = m_ownSelChange; m_ownSelChange = true;
 		tree.SelectItem(item);
-		m_ownSelChangeNotify = was;
+		m_ownSelChange = was;
 	}
 	LRESULT OnSelChangedFilter(LPNMHDR) {
 		if (m_ownSelChangeNotify) SetMsgHandled(FALSE);

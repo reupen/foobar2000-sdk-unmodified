@@ -2,8 +2,13 @@
 #include "CListControl.h"
 #include "PaintUtils.h"
 #include "CListControlUserOptions.h"
+#include "GDIUtils.h"
 
 CListControlUserOptions * CListControlUserOptions::instance = nullptr;
+
+CRect CListControlImpl::GetClientRectHook() const {
+	CRect temp; if (!GetClientRect(temp)) temp.SetRectEmpty(); return temp;
+}
 
 bool CListControlImpl::UserEnabledSmoothScroll() const {
 	auto i = CListControlUserOptions::instance;
@@ -76,12 +81,12 @@ void CListControlImpl::RefreshSlider(bool p_vertical) {
 		if (p_vertical) {
 			si.nPage = rcVisible.Height();
 			si.nMin = viewArea.top;
-			si.nMax = viewArea.bottom;
+			si.nMax = viewArea.bottom - 1;
 			si.nPos = rcVisible.top;
 		} else {
 			si.nPage = rcVisible.Width();
 			si.nMin = viewArea.left;
-			si.nMax = viewArea.right;
+			si.nMax = viewArea.right - 1;
 			si.nPos = rcVisible.left;
 		}	
 	}
@@ -164,6 +169,7 @@ void CListControlImpl::MoveViewOriginNoClip(CPoint p_target) {
 			if (this->UserEnabledSmoothScroll() && this->CanSmoothScroll()) {
 				flags |= SW_SMOOTHSCROLL | (smoothScrollMS << 16);
 			}
+
 			ScrollWindowEx(delta.x,delta.y,GetClientRectHook(),NULL,0,0,flags );
 		}
 
@@ -300,25 +306,22 @@ LRESULT CListControlImpl::OnSize(UINT,WPARAM,LPARAM p_lp,BOOL&) {
 }
 
 
-void CListControlImpl::PaintContent(CRect rcPaint, HDC dc) {
+void CListControlImpl::RenderBackground( CDCHandle dc, CRect const & rc ) {
+	PaintUtils::FillRectSimple(dc,rc,GetSysColorHook(colorBackground));
+}
 
-	{
-		CDCHandle renderDC(dc);
-#ifdef CListControl_ScrollWindowFix
-		//profiler(OnPaintOuter);
-		CMemoryDC bufferDC(renderDC,rcPaint);
-		renderDC = bufferDC;
-	 	PaintUtils::FillRectSimple(renderDC,rcPaint,GetSysColorHook(colorBackground));
-#endif
+void CListControlImpl::PaintContent(CRect rcPaint, HDC dc) {
+	CDCHandle renderDC(dc);
+
+	CMemoryDC bufferDC(renderDC,rcPaint);
+	renderDC = bufferDC;
+	this->RenderBackground(renderDC, rcPaint);
 		
-		{
-			//profiler(OnPaintInner);
-			
-			const CPoint pt = GetViewOffset();
-			OffsetWindowOrgScope offsetScope(renderDC, pt);
-			CRect renderRect = rcPaint; renderRect.OffsetRect(pt);
-			RenderRect(renderRect,renderDC);
-		}
+	{
+		const CPoint pt = GetViewOffset();
+		OffsetWindowOrgScope offsetScope(renderDC, pt);
+		CRect renderRect = rcPaint; renderRect.OffsetRect(pt);
+		RenderRect(renderRect,renderDC);
 	}
 }
 
@@ -334,29 +337,23 @@ LRESULT CListControlImpl::OnPaint(UINT,WPARAM,LPARAM,BOOL&) {
 
 	return 0;
 }
-/*
-static int RectCompare(const CRect & p_rect1,const CRect & p_rect2) {
-	if (p_rect1.bottom <= p_rect2.top) return -1;
-	else if (p_rect1.top >= p_rect2.bottom) return 1;
-	else return 0;
-}*/
-
-class comparator_rect {
-public:
-	static int compare(const CRect & p_rect1,const CRect & p_rect2) {
-		if (p_rect1.bottom <= p_rect2.top) return -1;
-		else if (p_rect1.top >= p_rect2.bottom) return 1;
-		else return 0;
-	}
-};
-
-static int RectPointCompare(const CRect & p_item1,const int p_y) {
-	if (p_item1.bottom <= p_y) return -1;
-	else if (p_item1.top > p_y) return 1;
-	else return 0;
-}
 
 namespace {
+	class comparator_rect {
+	public:
+		static int compare(const CRect & p_rect1,const CRect & p_rect2) {
+			if (p_rect1.bottom <= p_rect2.top) return -1;
+			else if (p_rect1.top >= p_rect2.bottom) return 1;
+			else return 0;
+		}
+	};
+
+	static int RectPointCompare(const CRect & p_item1,const int p_y) {
+		if (p_item1.bottom <= p_y) return -1;
+		else if (p_item1.top > p_y) return 1;
+		else return 0;
+	}
+
 	class RectSearchHelper_Items {
 	public:
 		RectSearchHelper_Items(const CListControlImpl & p_control) : m_control(p_control) {}
@@ -708,12 +705,69 @@ t_size CListControlImpl::InsertIndexFromPoint(const CPoint & pt) const {
 	bool dummy; return InsertIndexFromPointEx(pt,dummy);
 }
 
+COLORREF CListControlImpl::BlendGridColor( COLORREF bk ) {
+	return BlendGridColor( bk, PaintUtils::DetermineTextColor( bk ) );
+}
+
+COLORREF CListControlImpl::BlendGridColor( COLORREF bk, COLORREF tx ) {
+	return PaintUtils::BlendColor(bk, tx, 10);
+}
+
+COLORREF CListControlImpl::GridColor() {
+	return BlendGridColor( GetSysColorHook(colorBackground), GetSysColorHook(colorText) );
+}
+
+void CListControlImpl::RenderItemBackground(CDCHandle p_dc,const CRect & p_itemRect,size_t p_item, uint32_t bkColor) {
+	switch( this->m_rowStyle ) {
+	case rowStylePlaylistDelimited:
+		PaintUtils::RenderItemBackground(p_dc,p_itemRect,p_item+GetItemGroup(p_item),bkColor);
+		{
+			auto blend = BlendGridColor(bkColor);
+			CDCPen pen(p_dc, blend);
+			SelectObjectScope scope(p_dc, pen);
+
+			p_dc.MoveTo( p_itemRect.right-1, p_itemRect.top );
+			p_dc.LineTo( p_itemRect.right-1, p_itemRect.bottom );
+		}
+		break;
+	case rowStylePlaylist:
+		PaintUtils::RenderItemBackground(p_dc,p_itemRect,p_item+GetItemGroup(p_item),bkColor);
+		break;
+	case rowStyleGrid:
+		PaintUtils::FillRectSimple(p_dc, p_itemRect, bkColor );
+		{
+			auto blend = BlendGridColor(bkColor);
+			CDCBrush brush(p_dc, blend);
+			p_dc.FrameRect(&p_itemRect, brush);
+
+		}
+		break;
+	case rowStyleFlat:
+		PaintUtils::FillRectSimple(p_dc, p_itemRect, bkColor );
+		break;
+	}
+}
+
+void CListControlImpl::RenderGroupHeaderBackground(CDCHandle p_dc,const CRect & p_headerRect,int p_group) {
+	const t_uint32 bkColor = GetSysColorHook(colorBackground);
+	t_size index = 0;
+	t_size base, count;
+	if (p_group > 0 && ResolveGroupRange(p_group,base,count)) {
+		index = base + (t_size) p_group - 1;
+	}
+	switch( this->m_rowStyle ) {
+	default:
+		PaintUtils::FillRectSimple( p_dc, p_headerRect, bkColor );
+		break;
+	case rowStylePlaylistDelimited:
+	case rowStylePlaylist:
+		PaintUtils::RenderItemBackground(p_dc,p_headerRect,index,bkColor);
+		break;
+	}
+}
 
 void CListControlImpl::RenderItem(t_size p_item,const CRect & p_itemRect,const CRect & p_updateRect,CDCHandle p_dc) {
-	{
-		const auto bkColor = GetSysColorHook(colorBackground);
-		PaintUtils::RenderItemBackground(p_dc,p_itemRect,p_item+GetItemGroup(p_item),bkColor);
-	}
+	this->RenderItemBackground(p_dc, p_itemRect, p_item, GetSysColorHook(colorBackground) );
 
 	DCStateScope backup(p_dc);
 	p_dc.SetBkMode(TRANSPARENT);
@@ -722,21 +776,9 @@ void CListControlImpl::RenderItem(t_size p_item,const CRect & p_itemRect,const C
 
 	RenderItemText(p_item,p_itemRect,p_updateRect,p_dc, true);
 }
+
 void CListControlImpl::RenderGroupHeader(int p_group,const CRect & p_headerRect,const CRect & p_updateRect,CDCHandle p_dc) {
-	{
-		const t_uint32 bkColor = GetSysColorHook(colorBackground);
-		t_size index = 0;
-		t_size base, count;
-		if (p_group > 0 && ResolveGroupRange(p_group,base,count)) {
-			index = base + (t_size) p_group - 1;
-		}
-		PaintUtils::RenderItemBackground(p_dc,p_headerRect,index,bkColor);
-	}
-	/*{
-		const t_uint32 hlColor = GetColor(ui_color_highlight);
-		const t_uint32 bkColor = GetColor(ui_color_background);
-		PaintUtils::RenderGroupHeaderBackground(p_dc,p_headerRect,bkColor,hlColor);
-	}*/
+	this->RenderGroupHeaderBackground(p_dc, p_headerRect, p_group );
 
 	DCStateScope backup(p_dc);
 	p_dc.SetBkMode(TRANSPARENT);
@@ -809,10 +851,21 @@ LRESULT CListControlImpl::MousePassThru(UINT msg, WPARAM wp, LPARAM lp) {
 	return 0;
 }
 
+LRESULT CListControlImpl::OnGetDlgCode(UINT, WPARAM wp, LPARAM) {
+	switch(wp) {
+	case VK_RETURN:
+		return m_dlgWantEnter ? DLGC_WANTMESSAGE : 0;
+	default:
+		SetMsgHandled(FALSE);
+		return 0;
+	}
+}
 
 void CListControlImpl::CreateInDialog(CWindow wndDialog, UINT replaceControlID ) {
 	CWindow lstReplace = wndDialog.GetDlgItem(replaceControlID);
 	PFC_ASSERT( lstReplace != NULL );
+	auto status = lstReplace.SendMessage(WM_GETDLGCODE, VK_RETURN );
+	m_dlgWantEnter = (status & DLGC_WANTMESSAGE);
 	CRect rc;
 	CWindow wndPrev = wndDialog.GetNextDlgTabItem(lstReplace, TRUE);
 	WIN32_OP_D( lstReplace.GetWindowRect(&rc) );
@@ -909,4 +962,27 @@ void CListControlImpl::OnWindowPosChanged(LPWINDOWPOS arg) {
 		}
 	}
 	SetMsgHandled(FALSE);
+}
+
+void CListControlHeaderImpl::RenderItemBackground(CDCHandle p_dc,const CRect & p_itemRect,size_t item, uint32_t bkColor) {
+	if ( ! this->DelimitColumns() ) {
+		__super::RenderItemBackground(p_dc, p_itemRect, item, bkColor);
+	} else {
+		auto cnt = this->GetColumnCount();
+		uint32_t x = 0;
+		for( size_t walk = 0; walk < cnt; ) {
+			auto span = this->GetSubItemSpan( item, walk );
+			PFC_ASSERT( span > 0 );
+			uint32_t width = 0;
+			for( size_t walk2 = 0; walk2 < span; ++ walk2 ) {
+				width += this->GetSubItemWidth( walk + walk2 );
+			}
+			CRect rc = p_itemRect;
+			rc.left = x;
+			x += width;
+			rc.right = x;
+			__super::RenderItemBackground(p_dc, rc, item, bkColor);
+			walk += span;
+		}
+	}
 }

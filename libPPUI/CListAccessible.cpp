@@ -190,7 +190,14 @@ void CListAccessible::AccItemLayoutChanged() {
 void CListAccessible::AccFocusItemChanged(size_t index) {
 	if (m_wnd == NULL || m_interface.is_empty()) return;
 	if (GetFocus() != m_wnd) return;
-	NotifyWinEvent(EVENT_OBJECT_FOCUS, m_wnd, OBJID_CLIENT, index != ~0 ? ChildIdFromIndex(index) : CHILDID_SELF);
+	NotifyWinEvent(EVENT_OBJECT_FOCUS, m_wnd, OBJID_CLIENT, index != SIZE_MAX ? ChildIdFromIndex(index) : CHILDID_SELF);
+}
+void CListAccessible::AccFocusOtherChanged(size_t index) {
+	if (m_wnd == NULL || m_interface.is_empty()) return;
+	if (GetFocus() != m_wnd) return;
+	const size_t itemCount = this->AccGetItemCount();
+	index += itemCount;
+	NotifyWinEvent(EVENT_OBJECT_FOCUS, m_wnd, OBJID_CLIENT, index != SIZE_MAX ? ChildIdFromIndex(index) : CHILDID_SELF);
 }
 void CListAccessible::AccSelectionChanged(const pfc::bit_array & affected, const pfc::bit_array & state) {
 	if (m_wnd == NULL || m_interface.is_empty()) return;
@@ -331,7 +338,7 @@ HRESULT IAccessible_CListControl::get_accRole(VARIANT varChild, VARIANT *pvarRol
 		const size_t itemCount = m_owner->AccGetItemCount();
 		const size_t index = IndexFromChildId(varChild.lVal);
 		if (index < itemCount) {
-			pvarRole->lVal = ROLE_SYSTEM_LISTITEM;
+			pvarRole->lVal = m_owner->AccGetItemRole( index );
 		} else if (index < itemCount + m_owner->AccGetOtherCount()) {
 			pvarRole->lVal = m_owner->AccGetOtherRole(index - itemCount);
 		} else {
@@ -367,6 +374,7 @@ HRESULT IAccessible_CListControl::get_accState(VARIANT varChild, VARIANT *pvarSt
 			}
 			if (m_owner->AccIsItemSelected(index)) pvarState->lVal |= STATE_SYSTEM_SELECTED;
 			if (!m_owner->AccIsItemVisible(index)) pvarState->lVal |= STATE_SYSTEM_OFFSCREEN | STATE_SYSTEM_INVISIBLE;
+			if (m_owner->AccIsItemChecked(index)) pvarState->lVal |= STATE_SYSTEM_CHECKED;
 		} else if (index < itemCount + m_owner->AccGetOtherCount()) {
 			const size_t indexO = index - itemCount;
 			pvarState->lVal = 0;

@@ -71,11 +71,6 @@ public:
 		MSG_WM_SYSKEYUP(OnKeyUp)
 	END_MSG_MAP()
 	
-	using CListControlHeaderImpl::AddColumn;
-	using CListControlHeaderImpl::AddColumnAutoWidth;
-	using CListControlHeaderImpl::DeleteColumn;
-	using CListControlHeaderImpl::DeleteColumns;
-	using CListControlHeaderImpl::SetColumn;
 	using CListControl_EditImpl::TableEdit_Abort;
 	using CListControl_EditImpl::TableEdit_Start;
 	using CListControl_EditImpl::TableEdit_IsActive;

@@ -58,6 +58,7 @@ public:
 	//! Notification, mandatory to call by SetFocusItem() implementation. \n
 	//! If overridden by subclass, must call parent.
 	virtual void OnFocusChanged(size_t newFocus) {}
+	virtual void OnFocusChangedGroup(int inGroup) {}
 	//! Notification, mandatory to call by SetSelection() implementation. \n
 	//! If overridden by subclass, must call parent.
 	virtual void OnSelectionChanged(pfc::bit_array const & affected, pfc::bit_array const & status) {}
@@ -204,15 +205,21 @@ private:
 	bool m_drawThemeText;
 	pfc::string8 m_typeFind; DWORD m_typeFindTS;
 	
-	size_t m_dropMark = pfc_infinite; bool m_dropMarkInside = false;
+	size_t m_dropMark = SIZE_MAX; bool m_dropMarkInside = false;
 };
 
 //! CListControlWithSelectionImpl implements virtual methods of CListControlWithSelectionBase,
 //! maintaining focus/selection info for you.
 class CListControlWithSelectionImpl : public CListControlWithSelectionBase {
 public:
+
 	enum { selectionSupportNone = 0, selectionSupportSingle, selectionSupportMulti };
 	unsigned m_selectionSupport = selectionSupportMulti;
+
+	void SetSelectionModeNone() { m_selectionSupport = selectionSupportNone; }
+	void SetSelectionModeSingle() { m_selectionSupport = selectionSupportSingle; }
+	void SetSelectionModeMulti() { m_selectionSupport = selectionSupportMulti; }
+
 
 	CListControlWithSelectionImpl() {}
 	void SetFocusItem(t_size index);

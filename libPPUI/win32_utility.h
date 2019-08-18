@@ -45,3 +45,4 @@ bool IsMenuNonEmpty(HMENU menu);
 void SetDefaultMenuItem(HMENU p_menu, unsigned p_id);
 
 void GetOSVersionString(pfc::string_base & out);
+WORD GetOSVersionCode();

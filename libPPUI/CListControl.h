@@ -14,6 +14,7 @@
 #include <list>
 #include <vector>
 #include <set>
+#include <string>
 #include "CMiddleDragImpl.h"
 #include "wtl-pp.h"
 #include "gesture.h"
@@ -34,10 +35,13 @@ typedef CWinTraits<WS_VSCROLL | WS_HSCROLL | WS_TABSTOP | WS_CHILD | WS_VISIBLE 
 
 class CListControlImpl : public CWindowImpl<CListControlImpl,CWindow,CListControlTraits> {
 public:
-	CListControlImpl() : m_wheelAccumX(), m_wheelAccumY(), m_viewOrigin(0,0), m_sizeAsyncPending(false), m_dpi(QueryScreenDPIEx()), m_ensureVisibleUser() {}
-	
+	CListControlImpl() {}
+
 	DECLARE_WND_CLASS_EX(TEXT("{4B94B650-C2D8-40de-A0AD-E8FADF62D56C}"),CS_DBLCLKS,COLOR_WINDOW);
 	
+	// Wrapper around CWindowImpl::Create().
+	// Creates CListControl replacing another dialog control with the specified ID.
+	// Note that m_dlgWantEnter is set to false by this method, as it's typically unwanted in dialogs.
 	void CreateInDialog( CWindow wndDialog, UINT replaceControlID );
 
 	enum {
@@ -69,6 +73,7 @@ public:
 		MSG_WM_THEMECHANGED(OnThemeChanged)
 		MSG_WM_KILLFOCUS(OnKillFocus)
 		MSG_WM_WINDOWPOSCHANGED(OnWindowPosChanged)
+		MESSAGE_HANDLER_EX( WM_GETDLGCODE, OnGetDlgCode )
 	END_MSG_MAP()
 
 	virtual void ReloadData() { OnViewAreaChanged(); }
@@ -134,11 +139,16 @@ public:
 	//called by default RenderItem implementation
 	virtual void RenderGroupHeaderText(int p_group,const CRect & p_headerRect,const CRect & p_updateRect,CDCHandle p_dc) {}
 
+	virtual void RenderItemBackground(CDCHandle p_dc,const CRect & p_itemRect,size_t item, uint32_t bkColor);
+	virtual void RenderGroupHeaderBackground(CDCHandle p_dc,const CRect & p_headerRect,int iGroup);
+
+	virtual void RenderBackground( CDCHandle dc, CRect const & rc );
+
 	virtual void OnViewOriginChange(CPoint p_delta) {}
 	virtual void RenderOverlay(const CRect & p_updaterect,CDCHandle p_dc) {}
 	virtual bool FixedOverlayPresent() {return false;}
 
-	virtual CRect GetClientRectHook() const {CRect temp; if (!GetClientRect(temp)) temp.SetRectEmpty(); return temp;}
+	virtual CRect GetClientRectHook() const;
 
 	enum {
 		colorText = COLOR_WINDOWTEXT,
@@ -189,6 +199,31 @@ public:
 	void SetCaptureMsgHandled(BOOL v) { this->SetMsgHandled(v); }
 
 	SIZE GetDPI() const { return this->m_dpi;}
+
+	// Should this control take enter key in dialogs or not?
+	// Default to true for compatibility with existing code - but when used in dialogs, you'll want it set to false to hit [OK] with enter.
+	// Note that CreateInDialog() sets this to false. Change it later if you want enter key presses to reach this control in a dialog.
+	bool m_dlgWantEnter = true;
+
+	bool WantReturn() const { return m_dlgWantEnter; }
+	void SetWantReturn(bool v) { m_dlgWantEnter = v; }
+
+	enum {
+		rowStyleGrid = 0,
+		rowStyleFlat,
+		rowStylePlaylist,
+		rowStylePlaylistDelimited,
+	};
+	void SetPlaylistStyle() {SetRowStyle(rowStylePlaylist);}
+	void SetRowStyle(unsigned v) { this->m_rowStyle = v; if (m_hWnd) Invalidate(); }
+	void SetFlatStyle() {SetRowStyle(rowStyleFlat);}
+	unsigned m_rowStyle = rowStylePlaylistDelimited;
+	bool DelimitColumns() const { return m_rowStyle == rowStyleGrid || m_rowStyle == rowStylePlaylistDelimited; }
+
+	static COLORREF BlendGridColor( COLORREF bk, COLORREF tx );
+	static COLORREF BlendGridColor( COLORREF bk );
+	COLORREF GridColor();
+
 private:
 	void RenderRect(const CRect & p_rect,CDCHandle p_dc);
 	int HandleWheel(int & p_accum,int p_delta, bool bHoriz);
@@ -209,6 +244,7 @@ private:
 	LRESULT OnCreatePassThru(UINT,WPARAM,LPARAM,BOOL&);
 	LRESULT OnEraseBkgnd(UINT,WPARAM,LPARAM,BOOL&);
 	LRESULT MousePassThru(UINT, WPARAM, LPARAM);
+	LRESULT OnGetDlgCode(UINT, WPARAM, LPARAM);
 
 	void OnThemeChanged();
 	int GetScrollThumbPos(int which);
@@ -220,18 +256,19 @@ private:
 	bool MouseWheelFromHook(UINT msg, LPARAM data);
 
 	bool m_suppressMouseWheel = false;
-	int m_wheelAccumX, m_wheelAccumY;
-	CPoint m_viewOrigin;
-	bool m_sizeAsyncPending;
+	int m_wheelAccumX = 0, m_wheelAccumY = 0;
+	CPoint m_viewOrigin = CPoint(0,0);
+	bool m_sizeAsyncPending = false;
 	CPoint m_gesturePoint;
+
 protected:
 	pfc::map_t<pfc::string8, CTheme, pfc::comparator_strcmp> m_themeCache;
 	CTheme & themeFor( const char * what );
 	CTheme & theme() { return themeFor("LISTVIEW");}
 
-	const SIZE m_dpi;
+	const SIZE m_dpi = QueryScreenDPIEx();
 	CGestureAPI m_gestureAPI;
-	bool m_ensureVisibleUser;
+	bool m_ensureVisibleUser = false;
 	CaptureProc_t m_captureProc;
 	void defer( std::function<void () > f );
 	LRESULT OnExecDeferred(UINT, WPARAM, LPARAM);
@@ -282,239 +319,10 @@ private:
 	CFont m_groupHeaderFont;
 };
 
-class CListControlHeaderImpl : public CListControlFontOps {
-private:
-	typedef CListControlFontOps TParent;
-public:
-	CListControlHeaderImpl() {}
+#include "CListControlHeaderImpl.h"
+#include "CListControlTruncationTooltipImpl.h"
 
 
-	BEGIN_MSG_MAP_EX(CListControlHeaderImpl)
-		MESSAGE_HANDLER(WM_KEYDOWN,OnKeyDown);
-		MESSAGE_HANDLER(WM_SYSKEYDOWN,OnKeyDown);
-		MESSAGE_HANDLER_EX(WM_SIZE,OnSizePassThru);
-		NOTIFY_CODE_HANDLER(HDN_ITEMCHANGED,OnHeaderItemChanged);
-		NOTIFY_CODE_HANDLER(HDN_ENDDRAG,OnHeaderEndDrag);
-		NOTIFY_CODE_HANDLER(HDN_ITEMCLICK,OnHeaderItemClick);
-		NOTIFY_CODE_HANDLER(HDN_DIVIDERDBLCLICK,OnDividerDoubleClick);
-		MSG_WM_SETCURSOR(OnSetCursor);
-		MSG_WM_MOUSEMOVE(OnMouseMove)
-		MSG_WM_DESTROY(OnDestroy)
-		CHAIN_MSG_MAP(TParent)
-	END_MSG_MAP()
-
-	CRect GetClientRectHook() const;
-
-	enum cellType_t {
-		cell_none = 0,
-		cell_text,
-		cell_multitext,
-		cell_hyperlink,
-		cell_button,
-		cell_button_lite,
-		cell_button_glyph,
-		cell_button_total,
-		cell_checkbox,
-		cell_radiocheckbox,
-		cell_checkbox_total,
-	};
-
-	typedef uint32_t cellState_t;
-	enum {
-		cellState_none = 0,
-		cellState_hot = 1 << 0,
-		cellState_pressed = 1 << 1,
-	};
-
-	void InitializeHeaderCtrl(DWORD flags = HDS_FULLDRAG);
-	void InitializeHeaderCtrlSortable() {InitializeHeaderCtrl(HDS_FULLDRAG | HDS_BUTTONS);}
-	CHeaderCtrl GetHeaderCtrl() const {return m_header;}
-	void SetSortIndicator( size_t whichColumn, bool isUp );
-	void ClearSortIndicator();
-protected:
-	struct GetOptimalWidth_Cache {
-		//! For temporary use.
-		pfc::string8_fastalloc m_stringTemp, m_stringTempUnfuckAmpersands;
-		//! For temporary use.
-		pfc::stringcvt::string_wide_from_utf8_t<pfc::alloc_fast_aggressive> m_convertTemp;
-		//! Our DC for measuring text. Correct font pre-selected.
-		CDCHandle m_dc;
-
-		t_uint32 GetStringTempWidth();
-	};
-
-	void UpdateHeaderLayout();
-	void OnViewOriginChange(CPoint p_delta);
-	void SetHeaderFont(HFONT font);
-	void RenderItemText(t_size item,const CRect & itemRect,const CRect & updateRect,CDCHandle dc, bool allowColors);
-	void RenderGroupHeaderText(int id,const CRect & headerRect,const CRect & updateRect,CDCHandle dc);
-
-	// If creating a custom headerless multi column scheme, override these to manipulate your columns
-	virtual size_t GetColumnCount() const;
-	virtual uint32_t GetSubItemWidth(size_t subItem) const;
-	//! Indicate how many columns a specific row/column cell spans\n
-	//! This makes sense only if the columns can't be user-reordered
-	virtual size_t GetSubItemSpan(size_t row, size_t column) const;
-
-	t_size GetSubItemOrder(t_size subItem) const;
-	int GetItemWidth() const override;
-	bool IsHeaderEnabled() const {return m_header.m_hWnd != NULL;}
-	void ResetColumns(bool update = true);
-	void AddColumn(const char * label, t_uint32 widthPixels, DWORD fmtFlags = HDF_LEFT,bool update = true);
-	void AddColumnAutoWidth( const char * label, DWORD fmtFlags = HDF_LEFT, bool bUpdate = true) { AddColumn(label, UINT32_MAX, fmtFlags, bUpdate); }
-	bool DeleteColumn(size_t index, bool updateView = true);
-	void DeleteColumns( pfc::bit_array const & mask, bool updateView = true);
-	void ResizeColumn(t_size index, t_uint32 widthPixels, bool updateView = true);
-	void SetColumn( size_t which, const char * title, DWORD fmtFlags = HDF_LEFT, bool updateView = true);
-	//! Converts an item/subitem rect to a rect in which the text should be rendered, removing spacing to the left/right of the text.
-	CRect GetItemTextRect(CRect const & itemRect);
-	//! Override for custom spacing to the left/right of the text in each column.
-	virtual t_uint32 GetColumnSpacing() const {return MulDiv(4,m_dpi.cx,96);}
-	//! Override for column-header-click sorting.
-	virtual void OnColumnHeaderClick(t_size index) {}
-	//! Override to supply item labels.
-	virtual bool GetSubItemText(t_size item, t_size subItem, pfc::string_base & out) const {return false;}
-	//! Override if you support groups.
-	virtual bool GetGroupHeaderText(int id, pfc::string_base & out) const {return false;}
-	//! Override optionally.
-	virtual void RenderSubItemText(t_size item, t_size subItem,const CRect & subItemRect,const CRect & updateRect,CDCHandle dc, bool allowColors);
-
-	virtual void OnColumnsChanged() {OnViewAreaChanged();}
-
-	virtual t_uint32 GetOptimalSubItemWidth(t_size item, t_size subItem, GetOptimalWidth_Cache & cache) const;
-	uint32_t GetOptimalColumnWidth( size_t index ) const;
-	uint32_t GetOptimalColumnWidthFixed( const char * fixedText) const;
-
-	virtual t_uint32 GetOptimalGroupHeaderWidth(int which) const;
-
-	
-	bool GetItemAtPointAbsEx( CPoint pt, size_t & outItem, size_t & outSubItem ) const;
-	cellType_t GetCellTypeAtPointAbs( CPoint pt ) const;
-	virtual cellType_t GetCellType( size_t item, size_t subItem ) const { return cell_text; }
-	virtual bool AllowTypeFindInCell( size_t item, size_t subItem ) const;
-	virtual bool GetCellTypeSupported() const { return false; } // optimization hint, some expensive checks can be suppressed if cell types are not used for this view
-	virtual bool GetCellCheckState( size_t item, size_t subItem ) const { return false; }
-	virtual void SetCellCheckState( size_t item, size_t subItem, bool value ) {}
-	virtual bool ToggleSelectedItemsHook(const pfc::bit_array & mask);
-
-	void RenderSubItemTextInternal(t_size subItem, const CRect & subItemRect, CDCHandle dc, const char * text, bool allowColors);
-	void RenderSubItemTextInternal2( DWORD format, cellType_t cellType, cellState_t state, const CRect & subItemRect, CDCHandle dc, const char * text, bool allowColors, double textScale, CRect rcHot );
-
-	t_uint32 GetOptimalColumnWidth(t_size which, GetOptimalWidth_Cache & cache) const;
-	t_uint32 GetOptimalSubItemWidthSimple(t_size item, t_size subItem) const;
-	
-	void AutoColumnWidths(const pfc::bit_array & mask,bool expandLast = false);
-	void AutoColumnWidths() {AutoColumnWidths(pfc::bit_array_true());}
-	void AutoColumnWidth(t_size which) {AutoColumnWidths(pfc::bit_array_one(which));}
-
-	virtual bool OnColumnHeaderDrag(t_size index, t_size newOrder);
-
-	void OnItemClicked(t_size item, CPoint pt);
-	virtual void OnSubItemClicked(t_size item, t_size subItem,CPoint pt);
-	virtual bool OnClickedSpecialHitTest(CPoint pt);
-	virtual bool OnClickedSpecial(DWORD status, CPoint pt);
-
-	CRect GetSubItemRectAbs(t_size item,t_size subItem) const;
-	CRect GetSubItemRect(t_size item,t_size subItem) const;
-
-	t_size SubItemFromPointAbs(CPoint pt) const;
-
-	static bool CellTypeReactsToMouseOver( cellType_t ct );
-	virtual CRect CellHotRect( size_t item, size_t subItem, cellType_t ct, CRect rcCell );
-	CRect CellHotRect( size_t item, size_t subItem, cellType_t ct );
-	virtual double CellTextScale(size_t item, size_t subItem) { return 1; }
-
-	// HDF_* constants for this column, override when not using list header control. Used to control text alignment.
-	virtual DWORD GetColumnFormat(t_size which) const;
-	void SetColumnFormat(t_size which,DWORD format);
-	void SetColumnSort(t_size which, bool isUp);
-
-	std::vector<int> GetColumnOrderArray() const;
-
-	bool AllowScrollbar(bool vertical) const override;
-private:
-
-	void ProcessColumnsChange() {RecalcItemWidth();OnColumnsChanged();}
-	LRESULT OnSizePassThru(UINT,WPARAM,LPARAM);
-	LRESULT OnHeaderItemClick(int,LPNMHDR,BOOL&);
-	LRESULT OnDividerDoubleClick(int,LPNMHDR,BOOL&);
-	LRESULT OnHeaderItemChanged(int,LPNMHDR,BOOL&);
-	LRESULT OnHeaderEndDrag(int,LPNMHDR,BOOL&);
-	LRESULT OnKeyDown(UINT,WPARAM,LPARAM,BOOL&);
-	void OnDestroy();
-	BOOL OnSetCursor(CWindow wnd, UINT nHitTest, UINT message);
-	void OnMouseMove(UINT nFlags, CPoint point);
-
-	void RecalcItemWidth(); // FIXED width math
-	void ProcessAutoWidth(); // DYNAMIC width math
-	void ColumnWidthFix(); // Call either of the above after columns have been changed
-
-	int m_itemWidth = 0;
-	int m_clientWidth = 0;
-	CHeaderCtrl m_header;
-	std::set<int> m_autoWidthColumns;
-
-	//for group headers
-	GdiplusScope m_gdiPlusScope;
-
-	void SetPressedItem(size_t row, size_t column);
-	void ClearPressedItem() {SetPressedItem(SIZE_MAX, SIZE_MAX);}
-	void SetHotItem( size_t row, size_t column );
-	void ClearHotItem() { SetHotItem(SIZE_MAX, SIZE_MAX); }
-
-	size_t m_pressedItem = SIZE_MAX, m_pressedSubItem = SIZE_MAX;
-	size_t m_hotItem = SIZE_MAX, m_hotSubItem = SIZE_MAX;
-};
-
-class CListControlTruncationTooltipImpl : public CListControlHeaderImpl {
-private:
-	typedef CListControlHeaderImpl TParent;
-public:
-	CListControlTruncationTooltipImpl();
-
-	BEGIN_MSG_MAP_EX(CListControlTruncationTooltipImpl)
-		MESSAGE_HANDLER(WM_MOUSEHOVER,OnHover);
-		MESSAGE_HANDLER(WM_MOUSEMOVE,OnMouseMovePassThru);
-		MESSAGE_HANDLER(WM_TIMER,OnTimer);
-		MESSAGE_HANDLER(WM_DESTROY,OnDestroyPassThru);
-		CHAIN_MSG_MAP(TParent)
-		NOTIFY_CODE_HANDLER(TTN_GETDISPINFO,OnTTGetDispInfo);
-		NOTIFY_CODE_HANDLER(TTN_POP,OnTTPop);
-		NOTIFY_CODE_HANDLER(TTN_SHOW,OnTTShow);
-	END_MSG_MAP()
-
-	void OnViewOriginChange(CPoint p_delta) {TParent::OnViewOriginChange(p_delta);TooltipRemove();}
-protected:
-	virtual bool GetTooltipData( CPoint ptAbs, pfc::string_base & text, CRect & rc, CFontHandle & font) const;
-private:
-	enum {
-		KTooltipTimer = 0x51dbee9e,
-		KTooltipTimerDelay = 50,
-	};
-	LRESULT OnHover(UINT,WPARAM,LPARAM,BOOL&);
-	LRESULT OnMouseMovePassThru(UINT,WPARAM,LPARAM,BOOL&);
-	LRESULT OnTimer(UINT,WPARAM,LPARAM,BOOL&);
-	LRESULT OnTTGetDispInfo(int,LPNMHDR,BOOL&);
-	LRESULT OnTTShow(int,LPNMHDR,BOOL&);
-	LRESULT OnTTPop(int,LPNMHDR,BOOL&);
-	LRESULT OnDestroyPassThru(UINT,WPARAM,LPARAM,BOOL&);
-
-	void InitTooltip();
-	void TooltipActivateAbs(const char * label, const CRect & rect);
-	void TooltipActivate(const char * label, const CRect & rect);
-	void TooltipRemoveCheck(LPARAM pos);
-	void TooltipRemoveCheck();
-	void TooltipRemove();
-	void TooltipUpdateFont();
-	void OnSetFont(bool) {TooltipUpdateFont();}
-	bool IsRectFullyVisibleAbs(CRect const & r);
-	bool IsRectPartiallyObscuredAbs(CRect const & r) const;
-	CRect m_tooltipRect;
-	CToolTipCtrl m_tooltip;
-	TOOLINFO m_toolinfo;
-	pfc::stringcvt::string_os_from_utf8 m_tooltipText;
-	CFontHandle m_tooltipFont;
-};
 
 typedef CMiddleDragImpl<CListControlTruncationTooltipImpl> CListControl;
 

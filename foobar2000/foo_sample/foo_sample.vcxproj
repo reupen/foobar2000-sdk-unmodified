@@ -110,6 +110,7 @@
     <ClCompile Include="listcontrol-ownerdata.cpp" />
     <ClCompile Include="listcontrol-simple.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mainmenu-dynamic.cpp" />
     <ClCompile Include="mainmenu.cpp" />
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="PCH.cpp">

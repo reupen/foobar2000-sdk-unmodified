@@ -14,10 +14,12 @@ public:
 	LRESULT AccGetObject(WPARAM wp,LPARAM lp);
 	CWindow AccGetWnd() const {return m_wnd;}
 	virtual size_t AccGetItemCount() const {return 0;}
+	virtual LONG AccGetItemRole( size_t index ) const {return ROLE_SYSTEM_LISTITEM;}
 	virtual void AccGetItemName(size_t index, pfc::string_base & out) const {out = "";}
 	virtual void AccGetName(pfc::string_base & out) const;
 	virtual size_t AccGetFocusItem() const {return ~0;}
 	virtual bool AccIsItemSelected(size_t index) const {return false;}
+	virtual bool AccIsItemChecked( size_t index ) const { return false; }
 	virtual bool AccIsItemVisible(size_t index) const {return false;}
 	virtual bool AccGetItemDefaultAction(pfc::string_base & out) const {return false;}
 	virtual bool AccExecuteItemDefaultAction(size_t index) {return false;}
@@ -47,6 +49,7 @@ public:
 	void AccStateChange(pfc::bit_array const & mask);
 	void AccItemLayoutChanged();
 	void AccFocusItemChanged(size_t index);
+	void AccFocusOtherChanged(size_t index);
 	void AccSelectionChanged(const pfc::bit_array & affected, const pfc::bit_array & status);
 	void AccLocationChange();
 protected:
@@ -110,12 +113,31 @@ protected:
 	
 	// Item name by default taken from column 0, override this if you supply another
 	void AccGetItemName(size_t index, pfc::string_base & out) const {
-		if (!this->GetSubItemText(index, 0, out)) out = "";
+		pfc::string_formatter ret, temp;
+		const size_t total = this->GetColumnCount();
+		for( size_t walk = 0; walk < total; ) {
+			if ( this->GetSubItemText(index, walk, temp ) && temp.length() > 0 ) {
+				if ( ret.length() > 0 ) ret << ", ";
+				ret << temp;
+			}
+			size_t d = this->GetSubItemSpan(index, walk);
+			if ( d < 1 ) d = 1;
+			walk += d;
+		}
+		out = ret;
 	}
 
-	void AccSetSelection(pfc::bit_array const & affected, pfc::bit_array const & state) { this->SetSelection(affected, state); }
-	void AccSetFocusItem(size_t index) { this->SetFocusItem(index); }
+	void AccSetSelection(pfc::bit_array const & affected, pfc::bit_array const & state) override {
+		this->SetSelection(affected, state); 
+}
+	void AccSetFocusItem(size_t index) override {
+		this->SetFocusItem(index); 
+	}
 	
+	void OnFocusChangedGroup(int iGroup) override {
+		TBaseClass::OnFocusChangedGroup(iGroup);
+		AccFocusOtherChanged((size_t)iGroup);
+	}
 	void OnFocusChanged(size_t f) override {
 		TBaseClass::OnFocusChanged(f);
 		AccFocusItemChanged(f);
@@ -131,19 +153,19 @@ protected:
 	virtual bool AccGetOtherDescription(size_t index, pfc::string_base & out) const {return false;}//FIXME??
 
 	size_t AccGetOtherCount() const {return 1 + this->GetGroupCount();}
-	void AccGetOtherName(size_t index, pfc::string_base & out) const {
+	void AccGetOtherName(size_t index, pfc::string_base & out) const override {
 		if (index == 0) out = "Columns Header";
 		else if (!this->GetGroupHeaderText((int)index, out)) out = "";
 	}
-	size_t AccGetFocusOther() const {
+	size_t AccGetFocusOther() const override {
 		int focus = this->GetGroupFocus();
 		if (focus > 0) return (size_t) focus;
-		else return ~0;
+		else return SIZE_MAX;
 	}
-	void AccSetFocusOther(size_t index) {
+	void AccSetFocusOther(size_t index) override {
 		if (index > 0) this->SetGroupFocus((int)index);
 	}
-	bool AccIsOtherVisible(size_t index) const {
+	bool AccIsOtherVisible(size_t index) const override {
 		if (index == 0) return true;
 		CRect rc;
 		if (!this->GetGroupHeaderRect((int)index,rc)) return false;
@@ -183,6 +205,32 @@ protected:
 		} else {
 			return this->GetGroupHeaderRect((int)index, out);
 		}
+	}
+	LONG AccGetItemRole( size_t index ) const override {
+		auto type = GetCellType( index, 0 );
+		switch(type) {
+		case CListControlHeaderImpl::cell_checkbox:
+			return ROLE_SYSTEM_CHECKBUTTON;
+		case CListControlHeaderImpl::cell_radiocheckbox:
+			return ROLE_SYSTEM_RADIOBUTTON;
+		case CListControlHeaderImpl::cell_button:
+		case CListControlHeaderImpl::cell_button_lite:
+		case CListControlHeaderImpl::cell_button_glyph:
+			return ROLE_SYSTEM_PUSHBUTTON;
+		default:
+			return ROLE_SYSTEM_LISTITEM;
+		}
+	}
+	bool AccIsItemChecked( size_t index ) const override {
+		auto type = GetCellType( index, 0 );
+		switch(type) {
+		case CListControlHeaderImpl::cell_checkbox:
+		case CListControlHeaderImpl::cell_radiocheckbox:
+			return this->GetCellCheckState( index, 0 );
+		default:
+			return false;
+		}
+		
 	}
 private:
 	bool IsRectVisible(CRect const & rc) const {

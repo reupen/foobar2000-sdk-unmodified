@@ -200,6 +200,15 @@ static void GetOSVersionStringAppend(pfc::string_base & out) {
 void GetOSVersionString(pfc::string_base & out) {
 	out.reset(); GetOSVersionStringAppend(out);
 }
+WORD GetOSVersionCode() {
+	OSVERSIONINFO ver = {}; ver.dwOSVersionInfoSize = sizeof(ver);
+	WIN32_OP(GetVersionEx(&ver));
+	
+	DWORD ret = ver.dwMinorVersion;
+	ret += ver.dwMajorVersion << 8;
+
+	return (WORD)ret;
+}
 
 
 POINT GetCursorPos() {

@@ -174,8 +174,10 @@
     <ClInclude Include="CListAccessible.h" />
     <ClInclude Include="CListControl.h" />
     <ClInclude Include="CListControlComplete.h" />
+    <ClInclude Include="CListControlHeaderImpl.h" />
     <ClInclude Include="CListControlOwnerData.h" />
     <ClInclude Include="CListControlSimple.h" />
+    <ClInclude Include="CListControlTruncationTooltipImpl.h" />
     <ClInclude Include="CListControlUserOptions.h" />
     <ClInclude Include="CListControlWithSelection.h" />
     <ClInclude Include="CListControl_EditImpl.h" />

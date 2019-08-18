@@ -725,7 +725,8 @@ void CListControlWithSelectionBase::RenderItem(t_size p_item,const CRect & p_ite
 		DrawThemeBackground(m_theme, p_dc, LVP_LISTITEM, weHaveFocus ? LISS_SELECTED : LISS_SELECTEDNOTFOCUS , p_itemRect, p_updateRect);
 		dtt = true;
 	} else {
-		PaintUtils::RenderItemBackground(p_dc,p_itemRect,p_item+GetItemGroup(p_item),bkColorUsed);
+		this->RenderItemBackground(p_dc, p_itemRect, p_item, bkColorUsed );
+		// PaintUtils::RenderItemBackground(p_dc,p_itemRect,p_item+GetItemGroup(p_item),bkColorUsed);
 		if (isSelected) alternateTextColor = true;
 	}
 
@@ -739,7 +740,7 @@ void CListControlWithSelectionBase::RenderItem(t_size p_item,const CRect & p_ite
 	}
 
 	if (IsItemFocused(p_item) && weHaveFocus) {
-		PaintUtils::FocusRect(p_dc,p_itemRect);
+		PaintUtils::FocusRect2(p_dc,p_itemRect, bkColorUsed);
 	}
 }
 void CListControlWithSelectionBase::RenderSubItemText(t_size item, t_size subItem,const CRect & subItemRect,const CRect & updateRect,CDCHandle dc, bool allowColors) {
@@ -944,8 +945,11 @@ void CListControlWithSelectionImpl::SetGroupFocusByItem(t_size item) {
 	FocusToUpdateRgn(update);
 	InvalidateRgn(update);
 
+	const int iGroup = GetItemGroup(item);
 	CRect header; 
-	if (GetGroupHeaderRectAbs(GetItemGroup(item),header)) EnsureVisibleRectAbs(header);
+	if (GetGroupHeaderRectAbs(iGroup,header)) EnsureVisibleRectAbs(header);
+
+	this->OnFocusChangedGroup( iGroup );
 }
 
 void CListControlWithSelectionImpl::SetFocusItem(t_size index) {
