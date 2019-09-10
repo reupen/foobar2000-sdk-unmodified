@@ -201,8 +201,8 @@ void GetOSVersionString(pfc::string_base & out) {
 	out.reset(); GetOSVersionStringAppend(out);
 }
 WORD GetOSVersionCode() {
-	OSVERSIONINFO ver = {}; ver.dwOSVersionInfoSize = sizeof(ver);
-	WIN32_OP(GetVersionEx(&ver));
+	OSVERSIONINFO ver = {sizeof(ver)};
+	WIN32_OP_D(GetVersionEx(&ver));
 	
 	DWORD ret = ver.dwMinorVersion;
 	ret += ver.dwMajorVersion << 8;

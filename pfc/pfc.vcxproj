@@ -381,6 +381,7 @@
     <ClInclude Include="ref_counter.h" />
     <ClInclude Include="sort.h" />
     <ClInclude Include="splitString.h" />
+    <ClInclude Include="stdsort.h" />
     <ClInclude Include="string8_impl.h" />
     <ClInclude Include="string_base.h" />
     <ClInclude Include="string_conv.h" />

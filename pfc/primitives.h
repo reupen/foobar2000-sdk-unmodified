@@ -913,7 +913,16 @@ namespace pfc {
 		onLeaving( const onLeaving & ) = delete;
 	};
 
+	template<typename obj_t>
+	class singleton {
+	public:
+		static obj_t instance;
+	};
+	template<typename obj_t>
+	obj_t singleton<obj_t>::instance;
+
 };
+#define PFC_SINGLETON(X) ::pfc::singleton<X>::instance
 
 
 #define PFC_CLASS_NOT_COPYABLE(THISCLASSNAME,THISTYPE) \

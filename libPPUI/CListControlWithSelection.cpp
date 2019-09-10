@@ -6,7 +6,7 @@
 #include "PaintUtils.h"
 #include "IDataObjectUtils.h"
 #include "SmartStrStr.h"
-
+#include "CListControl-Cells.h"
 
 namespace {
 	class bit_array_selection_CListControl : public pfc::bit_array {
@@ -744,7 +744,10 @@ void CListControlWithSelectionBase::RenderItem(t_size p_item,const CRect & p_ite
 	}
 }
 void CListControlWithSelectionBase::RenderSubItemText(t_size item, t_size subItem,const CRect & subItemRect,const CRect & updateRect,CDCHandle dc, bool allowColors) {
-	if (m_drawThemeText && GetCellType( item, subItem ) == cell_text) for(;;) {
+	auto ct = GetCellType(item, subItem);
+	if ( ct == nullptr ) return;
+
+	if (m_drawThemeText && ct->AllowDrawThemeText() ) for(;;) {
 		pfc::string_formatter label;
 		if (!GetSubItemText(item,subItem,label)) return;
 		const bool weHaveFocus = ::GetFocus() == m_hWnd;

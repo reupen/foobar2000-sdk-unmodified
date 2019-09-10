@@ -20,6 +20,19 @@ namespace InPlaceEdit {
 		virtual void TableEdit_GetColumnOrder(t_size * out, t_size count) const { order_helper::g_fill(out, count); }
 		virtual t_uint32 TableEdit_GetEditFlags(t_size item, t_size subItem) const { return 0; }
 		virtual bool TableEdit_GetAutoComplete(t_size item, t_size subItem, pfc::com_ptr_t<IUnknown> & out) { return false; }
+
+		struct autoComplete_t {
+			pfc::com_ptr_t<IUnknown> data;
+			enum { // ACO_* equivalents
+				optsNone = 0,
+				optsDefault = 1,
+				optsAutoSuggest = 1,
+				optsAutoAppend = 3,
+			};
+			DWORD options = optsNone;
+		};
+		virtual autoComplete_t TableEdit_GetAutoCompleteEx( size_t item, size_t sub );
+
 		void TableEdit_Start(t_size item, t_size subItem);
 		void TableEdit_Abort(bool forwardContent);
 		bool TableEdit_IsActive() const { return !!m_taskKill; }

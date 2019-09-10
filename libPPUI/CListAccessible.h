@@ -4,6 +4,8 @@
 
 #pragma comment(lib, "oleacc.lib")
 
+#include "CListControl-Cell.h"
+
 //! Internal class interfacing with Windows accessibility APIs. \n
 //! This class is not tied to any specific control and requires most of its methods to be overridden. \n
 //! With CListControl you want to use CListControlAccImpl<> template instead of using CListAccessible directly.
@@ -208,29 +210,17 @@ protected:
 	}
 	LONG AccGetItemRole( size_t index ) const override {
 		auto type = GetCellType( index, 0 );
-		switch(type) {
-		case CListControlHeaderImpl::cell_checkbox:
-			return ROLE_SYSTEM_CHECKBUTTON;
-		case CListControlHeaderImpl::cell_radiocheckbox:
-			return ROLE_SYSTEM_RADIOBUTTON;
-		case CListControlHeaderImpl::cell_button:
-		case CListControlHeaderImpl::cell_button_lite:
-		case CListControlHeaderImpl::cell_button_glyph:
-			return ROLE_SYSTEM_PUSHBUTTON;
-		default:
-			return ROLE_SYSTEM_LISTITEM;
+		if ( type != nullptr ) {
+			return type->AccRole();
 		}
+		return ROLE_SYSTEM_LISTITEM;
 	}
 	bool AccIsItemChecked( size_t index ) const override {
 		auto type = GetCellType( index, 0 );
-		switch(type) {
-		case CListControlHeaderImpl::cell_checkbox:
-		case CListControlHeaderImpl::cell_radiocheckbox:
+		if ( type != nullptr && type->IsToggle() ) {
 			return this->GetCellCheckState( index, 0 );
-		default:
-			return false;
 		}
-		
+		return false;
 	}
 private:
 	bool IsRectVisible(CRect const & rc) const {

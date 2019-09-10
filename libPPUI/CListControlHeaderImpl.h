@@ -1,11 +1,12 @@
 #pragma once
 
+class CListCell;
+
 class CListControlHeaderImpl : public CListControlFontOps {
 private:
 	typedef CListControlFontOps TParent;
 public:
 	CListControlHeaderImpl() {}
-
 
 	BEGIN_MSG_MAP_EX(CListControlHeaderImpl)
 		MSG_WM_CTLCOLORSTATIC(OnCtlColorStatic);
@@ -22,26 +23,8 @@ public:
 		CHAIN_MSG_MAP(TParent)
 	END_MSG_MAP()
 
-	enum cellType_t {
-		cell_none = 0,
-		cell_text,
-		cell_multitext,
-		cell_hyperlink,
-		cell_button,
-		cell_button_lite,
-		cell_button_glyph,
-		cell_button_total,
-		cell_checkbox,
-		cell_radiocheckbox,
-		cell_checkbox_total,
-	};
-
 	typedef uint32_t cellState_t;
-	enum {
-		cellState_none = 0,
-		cellState_hot = 1 << 0,
-		cellState_pressed = 1 << 1,
-	};
+	typedef CListCell * cellType_t;
 
 	int GetHeaderItemWidth( int which );
 	void InitializeHeaderCtrl(DWORD flags = HDS_FULLDRAG);
@@ -59,10 +42,13 @@ public:
 		columnWidthAutoUseContent = UINT32_MAX-1,
 	};
 	void AddColumn(const char * label, uint32_t widthPixels, DWORD fmtFlags = HDF_LEFT,bool update = true);
-	// Extended AddColumn, specifies width in pixels @ 96DPI instead of screen-specific pixels
+	//! Extended AddColumn, specifies width in pixels @ 96DPI instead of screen-specific pixels
 	void AddColumnEx( const char * label, uint32_t widthPixelsAt96DPI, DWORD fmtFlags = HDF_LEFT, bool update = true );
-	// Extended AddColumn, specifies width in Dialog Length Units (DLU), assumes parent of this list to be a dialog window.
+	//! Extended AddColumn, specifies width in Dialog Length Units (DLU), assumes parent of this list to be a dialog window.
 	void AddColumnDLU( const char * label, uint32_t widthDLU, DWORD fmtFlags = HDF_LEFT, bool update = true );
+	//! Extended AddColumn, specifies width as floating-point value of pixels at 96DPI. \n
+	//! For DPI-safe storage of user's column widths.
+	void AddColumnF( const char * label, float widthF, DWORD fmtFlags = HDF_LEFT, bool update = true );
 	void AddColumnAutoWidth( const char * label, DWORD fmtFlags = HDF_LEFT, bool bUpdate = true) { AddColumn(label, columnWidthAuto, fmtFlags, bUpdate); }
 	bool DeleteColumn(size_t index, bool updateView = true);
 	void DeleteColumns( pfc::bit_array const & mask, bool updateView = true);
@@ -74,6 +60,19 @@ public:
 	uint32_t GetColumnsBlankWidth( size_t colExclude = SIZE_MAX ) const;
 	void SizeColumnToContent( size_t which, uint32_t minWidth );
 	void SizeColumnToContentFillBlank( size_t which );
+
+	//! If creating a custom headerless multi column scheme, override these to manipulate your columns
+	virtual size_t GetColumnCount() const;
+	virtual uint32_t GetSubItemWidth(size_t subItem) const;
+	//! Returns column width as a floating-point value of pixels at 96DPI. \n
+	//! For DPI-safe storage of user's column widths.
+	float GetColumnWidthF( size_t subItem ) const;
+	//! Indicate how many columns a specific row/column cell spans\n
+	//! This makes sense only if the columns can't be user-reordered
+	virtual size_t GetSubItemSpan(size_t row, size_t column) const;
+
+	t_size GetSubItemOrder(t_size subItem) const;
+	int GetItemWidth() const override;
 protected:
 	CRect GetClientRectHook() const override;
 	void RenderBackground(CDCHandle dc, CRect const& rc) override;
@@ -95,15 +94,6 @@ protected:
 	void RenderItemText(t_size item,const CRect & itemRect,const CRect & updateRect,CDCHandle dc, bool allowColors);
 	void RenderGroupHeaderText(int id,const CRect & headerRect,const CRect & updateRect,CDCHandle dc);
 
-	// If creating a custom headerless multi column scheme, override these to manipulate your columns
-	virtual size_t GetColumnCount() const;
-	virtual uint32_t GetSubItemWidth(size_t subItem) const;
-	//! Indicate how many columns a specific row/column cell spans\n
-	//! This makes sense only if the columns can't be user-reordered
-	virtual size_t GetSubItemSpan(size_t row, size_t column) const;
-
-	t_size GetSubItemOrder(t_size subItem) const;
-	int GetItemWidth() const override;
 	//! Converts an item/subitem rect to a rect in which the text should be rendered, removing spacing to the left/right of the text.
 	virtual CRect GetItemTextRectHook(size_t item, size_t subItem, CRect const & itemRect) const;
 	CRect GetItemTextRect(CRect const & itemRect) const;
@@ -127,7 +117,7 @@ protected:
 	
 	bool GetItemAtPointAbsEx( CPoint pt, size_t & outItem, size_t & outSubItem ) const;
 	cellType_t GetCellTypeAtPointAbs( CPoint pt ) const;
-	virtual cellType_t GetCellType( size_t item, size_t subItem ) const { return cell_text; }
+	virtual cellType_t GetCellType( size_t item, size_t subItem ) const;
 	virtual bool AllowTypeFindInCell( size_t item, size_t subItem ) const;
 	virtual bool GetCellTypeSupported() const { return false; } // optimization hint, some expensive checks can be suppressed if cell types are not used for this view
 	virtual bool GetCellCheckState( size_t item, size_t subItem ) const { return false; }
@@ -135,7 +125,6 @@ protected:
 	virtual bool ToggleSelectedItemsHook(const pfc::bit_array & mask);
 
 	void RenderSubItemTextInternal(size_t subItem, const CRect & subItemRect, CDCHandle dc, const char * text, bool allowColors);
-	void RenderSubItemTextInternal2( DWORD format, cellType_t cellType, cellState_t state, const CRect & subItemRect, CDCHandle dc, const char * text, bool allowColors, double textScale, CRect rcHot, CRect rcText );
 
 	t_uint32 GetOptimalColumnWidth(t_size which, GetOptimalWidth_Cache & cache) const;
 	t_uint32 GetOptimalSubItemWidthSimple(t_size item, t_size subItem) const;
@@ -179,7 +168,7 @@ protected:
 	void ReloadData() override;
 private:
 	HBRUSH OnCtlColorStatic(CDCHandle dc, CStatic wndStatic);
-	void ProcessColumnsChange() {RecalcItemWidth();OnColumnsChanged();}
+	void ProcessColumnsChange() { OnColumnsChanged();}
 	LRESULT OnSizePassThru(UINT,WPARAM,LPARAM);
 	LRESULT OnHeaderItemClick(int,LPNMHDR,BOOL&);
 	LRESULT OnDividerDoubleClick(int,LPNMHDR,BOOL&);
@@ -193,6 +182,7 @@ private:
 	void RecalcItemWidth(); // FIXED width math
 	void ProcessAutoWidth(); // DYNAMIC width math
 	
+	bool m_ownColumnsChange = false;
 
 	int m_itemWidth = 0;
 	int m_clientWidth = 0;

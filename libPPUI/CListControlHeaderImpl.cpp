@@ -1,10 +1,10 @@
 #include "stdafx.h"
 #include "CListControl.h"
 #include "CListControlHeaderImpl.h" // redundant but makes intelisense quit showing false errors
+#include "CListControl-Cells.h"
 #include "PaintUtils.h"
 #include "GDIUtils.h"
 #include "win32_utility.h"
-#include <vsstyle.h>
 
 enum {
 	lineBelowHeaderCY = 1
@@ -89,7 +89,7 @@ LRESULT CListControlHeaderImpl::OnHeaderItemClick(int,LPNMHDR p_hdr,BOOL&) {
 LRESULT CListControlHeaderImpl::OnHeaderItemChanged(int,LPNMHDR p_hdr,BOOL&) {
 	const NMHEADER * info = (const NMHEADER*) p_hdr;
 	if (info->pitem->mask & (HDI_WIDTH | HDI_ORDER)) {
-		ProcessColumnsChange();
+		if(!m_ownColumnsChange) ProcessColumnsChange();
 	}
 	return 0;
 }
@@ -142,13 +142,6 @@ t_size CListControlHeaderImpl::SubItemFromPointAbs(CPoint pt) const {
 	return pfc_infinite;
 }
 
-static CRect CheckBoxRect(CRect rc) {
-	if (rc.Width() > rc.Height()) {
-		rc.right = rc.left + rc.Height();
-	}
-	return rc;
-}
-
 bool CListControlHeaderImpl::OnClickedSpecial(DWORD status, CPoint pt) {
 	
 	const DWORD maskButtons = MK_LBUTTON | MK_RBUTTON | MK_MBUTTON | MK_XBUTTON1 | MK_XBUTTON2;
@@ -170,6 +163,13 @@ bool CListControlHeaderImpl::OnClickedSpecial(DWORD status, CPoint pt) {
 
 	SetPressedItem(item, subItem);
 	SetCaptureEx([=](UINT, DWORD newStatus, CPoint pt) {
+
+		{
+			CRect rc = this->GetClientRectHook();
+			if (!rc.PtInRect(pt)) {
+				ClearPressedItem(); return false;
+			}
+		}
 
 		size_t newItem, newSubItem;
 		if (!this->GetItemAtPointAbsEx(pt + GetViewOffset(), newItem, newSubItem) || newItem != item || newSubItem != subItem) {
@@ -195,7 +195,8 @@ bool CListControlHeaderImpl::OnClickedSpecial(DWORD status, CPoint pt) {
 }
 
 bool CListControlHeaderImpl::CellTypeUsesSpecialHitTests( cellType_t ct ) {
-	return ct == cell_hyperlink || ( ct >= cell_button && ct < cell_button_total );
+	if ( ct == nullptr ) return false;
+	return ct->SuppressRowSelect();
 }
 
 bool CListControlHeaderImpl::OnClickedSpecialHitTest(CPoint pt) {
@@ -304,6 +305,7 @@ void CListControlHeaderImpl::OnColumnsChanged() {
 		for( size_t walk = 0; walk < m_colRuntime.size(); ++ walk ) {
 			m_colRuntime[walk].m_widthPixels = GetHeaderItemWidth( (int) walk );
 		}
+		RecalcItemWidth();
 	}
 	this->OnViewAreaChanged();
 }
@@ -339,7 +341,7 @@ void CListControlHeaderImpl::ResizeColumn(t_size index, t_uint32 widthPixels, bo
 	HDITEM item = {};
 	item.mask = HDI_WIDTH;
 	item.cxy = widthPixels;
-	m_header.SetItem( (int) index, &item );
+	{ pfc::vartoggle_t<bool> scope(m_ownColumnsChange, true); m_header.SetItem( (int) index, &item ); }
 	m_colRuntime[index].m_widthPixels = widthPixels;
 	RecalcItemWidth();
 	if (updateView) OnColumnsChanged();
@@ -416,7 +418,13 @@ void CListControlHeaderImpl::AddColumnDLU( const char * label, uint32_t widthDLU
 	}
 	AddColumn( label, w, fmtFlags, update );
 }
-
+void CListControlHeaderImpl::AddColumnF( const char * label, float widthF, DWORD fmtFlags, bool update) {
+	uint32_t w = columnWidthMax;
+	if ( widthF >= 0 ) {
+		w = pfc::rint32( widthF * m_dpi.cx / 96.0f );
+	}
+	AddColumn( label, w, fmtFlags, update );
+}
 void CListControlHeaderImpl::AddColumn(const char * label, uint32_t width, DWORD fmtFlags,bool update) {
 	if (! IsHeaderEnabled( ) ) InitializeHeaderCtrl();
 
@@ -444,6 +452,11 @@ void CListControlHeaderImpl::AddColumn(const char * label, uint32_t width, DWORD
 	if (update) OnColumnsChanged();
 
 	ProcessAutoWidth();
+}
+
+float CListControlHeaderImpl::GetColumnWidthF(size_t subItem) const {
+	auto w = GetSubItemWidth(subItem);
+	return (float) w * 96.0 / (float)m_dpi.cx;
 }
 
 void CListControlHeaderImpl::RenderBackground(CDCHandle dc, CRect const& rc) {
@@ -538,191 +551,7 @@ CListControlHeaderImpl::cellType_t CListControlHeaderImpl::GetCellTypeAtPointAbs
 	if ( GetItemAtPointAbsEx( pt, item, subItem) ) {
 		return GetCellType( item, subItem );
 	}
-	return cell_none;
-}
-
-static void RenderCheckbox( CTheme & theme, CWindow wnd, CDCHandle dc, CRect rcCheckBox, unsigned stateFlags, bool bRadio ) {
-
-	const int part = bRadio ? BP_RADIOBUTTON : BP_CHECKBOX;
-
-	const bool bDisabled = ! wnd.IsWindowEnabled();
-	const bool bPressed = (stateFlags & CListControlHeaderImpl::cellState_pressed ) != 0;
-	const bool bHot = ( stateFlags & CListControlHeaderImpl::cellState_hot ) != 0;
-
-	if (theme != NULL && IsThemePartDefined(theme, part, 0)) {
-		int state = 0;
-		if (bDisabled) {
-			state = bPressed ? CBS_CHECKEDDISABLED : CBS_DISABLED;
-		} else if ( bHot ) {
-			state = bPressed ? CBS_CHECKEDHOT : CBS_HOT;
-		} else {
-			state = bPressed ? CBS_CHECKEDNORMAL : CBS_NORMAL;
-		}
-
-		CSize size;
-		if (SUCCEEDED(GetThemePartSize(theme, dc, part, state, rcCheckBox, TS_TRUE, &size))) {
-			if (size.cx <= rcCheckBox.Width() && size.cy <= rcCheckBox.Height()) {
-				CRect rc = rcCheckBox;
-				rc.left += ( rc.Width() - size.cx ) / 2;
-				rc.top += ( rc.Height() - size.cy ) / 2;
-				rc.right = rc.left + size.cx;
-				rc.bottom = rc.top + size.cy;
-				DrawThemeBackground(theme, dc, part, state, rc, &rc);
-				return;
-			}
-		}
-	}
-	int stateEx = bRadio ? DFCS_BUTTONRADIO : DFCS_BUTTONCHECK;
-	if ( bPressed ) stateEx |= DFCS_CHECKED;
-	if ( bDisabled ) stateEx |= DFCS_INACTIVE;
-	else if ( bHot ) stateEx |= DFCS_HOT;
-	DrawFrameControl(dc, rcCheckBox, DFC_BUTTON, stateEx);
-}
-
-static void RenderButton( CTheme & theme, CWindow wnd, CDCHandle dc, CRect rcButton, CRect rcUpdate, CListControlHeaderImpl::cellState_t cellState ) {
-
-	const int part = BP_PUSHBUTTON;
-
-	enum {
-		stNormal = PBS_NORMAL,
-		stHot = PBS_HOT,
-		stDisabled = PBS_DISABLED,
-		stPressed = PBS_PRESSED,
-	};
-
-	int state = 0;
-	if (!wnd.IsWindowEnabled()) state = stDisabled;
-	if ( cellState & CListControlHeaderImpl::cellState_pressed ) state = stPressed;
-	else if ( cellState & CListControlHeaderImpl::cellState_hot ) state = stHot;
-	else state = stNormal;
-
-	CRect rcClient  = rcButton;
-
-	if (theme != NULL && IsThemePartDefined(theme, part, 0)) {
-		DrawThemeBackground(theme, dc, part, state, rcClient, &rcUpdate);
-	} else {
-		int stateEx = DFCS_BUTTONPUSH;
-		switch (state) {
-		case stPressed: stateEx |= DFCS_PUSHED; break;
-		case stDisabled: stateEx |= DFCS_INACTIVE; break;
-		}
-		DrawFrameControl(dc, rcClient, DFC_BUTTON, stateEx);
-	}
-}
-
-void CListControlHeaderImpl::RenderSubItemTextInternal2(DWORD hdrFormat, cellType_t cellType, cellState_t cellState, const CRect & subItemRect, CDCHandle dc, const char * text, bool allowColors, double textScale, CRect rcHot, CRect rcText) {
-
-	// add drawing of any new custom cell types here
-	PFC_ASSERT( cellType == cell_hyperlink || cellType == cell_button || cellType == cell_text || cellType == cell_multitext || cellType == cell_button_lite || cellType == cell_button_glyph || cellType == cell_checkbox || cellType == cell_radiocheckbox );
-	
-	const bool bHyperLink = (cellType == cell_hyperlink) && allowColors;
-	const bool bPressed = (cellState & cellState_pressed) != 0;
-	const bool bHot = (cellState & cellState_hot) != 0;
-	const bool bGlyph = (cellType == cell_button_glyph);
-
-	if ( bGlyph ) {
-		textScale *= 1.3;
-	}
-	
-	if ( cellType == cell_button_glyph ) cellType = cell_button_lite; // from here on cell_button_glyph is the same as cell_button_lite
-	
-	if ( ( bHot || bPressed ) && cellType == cell_button_lite ) cellType = cell_button;
-
-	pfc::stringcvt::string_os_from_utf8 cvt(text);
-	CRect clip = rcText;
-
-	const uint32_t fgWas = dc.GetTextColor();
-
-	if (cellType == cell_button) {
-		RenderButton( themeFor("BUTTON"), *this, dc, rcHot, rcHot, cellState );
-	}
-
-	const t_uint32 format = PaintUtils::DrawText_TranslateHeaderAlignment(hdrFormat);
-	const t_uint32 bk = dc.GetBkColor();
-	const t_uint32 fg = bHyperLink ? GetSysColorHook(colorHighlight) : fgWas;
-	const t_uint32 hl = (allowColors ? GetSysColorHook(colorHighlight) : fg);
-	const t_uint32 colors[3] = { PaintUtils::BlendColor(bk, fg, 33), fg, hl };
-
-	CFontHandle fontRestore;
-	CFont fontOverride;
-
-	bool bUnderline = false, bBold = false;
-	if ( bHyperLink && bHot ) {
-		bUnderline = true;
-	}
-
-#if 0
-	if ( bHyperLink && bPressed ) {
-		bBold = true;
-	}
-
-	if (cellType == cell_button_lite && bPressed) {
-		bBold = true;
-	}
-#endif
-
-	if ( bUnderline || bBold || textScale != 1.0 ) {
-		LOGFONT data;
-		if (dc.GetCurrentFont().GetLogFont(&data)) {
-			if ( bUnderline ) data.lfUnderline = TRUE;
-			if ( bBold ) data.lfWeight = FW_BOLD;
-			if ( textScale != 1.0 ) data.lfHeight = pfc::rint32( data.lfHeight * textScale );
-			if (fontOverride.CreateFontIndirect( & data )) {
-				fontRestore = dc.SelectFont( fontOverride );
-			}
-		}
-	}
-	
-
-	
-
-	switch (cellType) {
-	case cell_radiocheckbox:
-	case cell_checkbox:
-		if (subItemRect.Width() > subItemRect.Height() ) {
-			CRect rcCheckbox = subItemRect;
-			rcCheckbox.right = rcCheckbox.left + rcCheckbox.Height();
-			RenderCheckbox( themeFor("BUTTON"), *this, dc, rcCheckbox, cellState, (cellType == cell_radiocheckbox) );
-			SetTextColorScope cs(dc, colors[1]);
-			CRect rcText = subItemRect;
-			rcText.left = rcCheckbox.right;
-			dc.DrawText(cvt, (int)cvt.length(), rcText, DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_LEFT);
-		} else {
-			RenderCheckbox(themeFor("BUTTON"), *this, dc, subItemRect, cellState, (cellType == cell_radiocheckbox));
-		}
-		break;
-	case cell_button:
-	case cell_button_lite:
-		{
-			SetTextColorScope cs(dc, colors[1]);
-			dc.DrawText(cvt, (int)cvt.length(), clip, DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_CENTER);
-		}
-		break;
-	case cell_multitext:
-		{
-			SetTextColorScope cs(dc, colors[1]);
-			auto format2 = DT_NOPREFIX | DT_VCENTER | format;
-			CRect rcDraw = clip;
-			dc.DrawText(cvt, (int)cvt.length(), rcDraw, format | DT_CALCRECT);
-			auto txSize = rcDraw.Size();
-			rcDraw = clip;
-			if ( txSize.cy < rcDraw.Height() ) {
-				int sub = rcDraw.Height() - txSize.cy;
-				rcDraw.top += sub/2;
-				rcDraw.bottom = rcDraw.top + txSize.cy;
-			}
-			dc.DrawText(cvt, (int)cvt.length(), rcDraw, format2);
-		}
-		break;
-	default:
-		PaintUtils::TextOutColorsEx(dc, cvt, clip, format, colors);
-		break;
-	}
-	
-
-	if ( fontRestore ) dc.SelectFont( fontRestore );
-
-	dc.SetTextColor(fgWas);
+	return nullptr;
 }
 
 void CListControlHeaderImpl::RenderSubItemTextInternal(t_size subItem, const CRect & subItemRect, CDCHandle dc, const char * text, bool allowColors) {
@@ -742,31 +571,59 @@ void CListControlHeaderImpl::RenderSubItemTextInternal(t_size subItem, const CRe
 		dc.DrawText(cvt,(int)cvt.length(),clip,DT_NOPREFIX | DT_END_ELLIPSIS | DT_SINGLELINE | DT_VCENTER | format );
 	}
 }
+CListCell * CListControlHeaderImpl::GetCellType( size_t item, size_t subItem ) const {
+	return &PFC_SINGLETON(CListCell_Text);
+}
 void CListControlHeaderImpl::RenderSubItemText(t_size item, t_size subItem,const CRect & subItemRect,const CRect & updateRect,CDCHandle dc, bool allowColors) {
-	pfc::string_formatter label;
 	const auto cellType = GetCellType( item, subItem );
+	if ( cellType == nullptr ) {
+		PFC_ASSERT( !"Should not get here" );
+		return;
+	}
+	pfc::string_formatter label;
 	const bool bHaveText = GetSubItemText(item,subItem,label);
 	if (! bHaveText ) {
-		switch(cellType) {
-		case cell_text:
-		case cell_multitext:
-		case cell_hyperlink:
-			return;// nothing to do
-		}
-
 		label = ""; //sanity
 	}
 
+	pfc::stringcvt::string_os_from_utf8_fast labelOS ( label );
+	CListCell::DrawContentArg_t arg;
+	arg.hdrFormat = GetColumnFormat( subItem );
+	arg.subItemRect = subItemRect;
+	arg.dc = dc;
+	arg.text = labelOS.get_ptr();
+	arg.allowColors = allowColors;
 	bool bPressed;
-	cellState_t state = cellState_none;
-	if ( cellType == cell_checkbox || cellType == cell_radiocheckbox ) bPressed = this->GetCellCheckState(item, subItem);
+	if ( cellType->IsToggle() ) bPressed = this->GetCellCheckState(item, subItem);
 	else bPressed = (item == m_pressedItem) && (subItem == m_pressedSubItem);
 	bool bHot = (item == m_hotItem) && ( subItem == m_hotSubItem );
-	if ( bPressed ) state |= cellState_pressed;
-	if ( bHot ) state |= cellState_hot;
-	auto rcText = GetItemTextRectHook(item, subItem, subItemRect);
-	auto rcHot = CellHotRect(item, subItem, cellType, subItemRect);
-	RenderSubItemTextInternal2( GetColumnFormat(subItem), cellType, state, subItemRect, dc, label, allowColors, CellTextScale(item, subItem), rcHot, rcText );
+	if ( bPressed ) arg.cellState |= CListCell::cellState_pressed;
+	if ( bHot ) arg.cellState|= CListCell::cellState_hot;
+	arg.rcText = GetItemTextRectHook(item, subItem, subItemRect);
+	arg.rcHot = CellHotRect(item, subItem, cellType, subItemRect);
+
+	auto strTheme = cellType->Theme();
+	if ( strTheme != nullptr ) {
+		arg.theme = themeFor( strTheme ).m_theme;
+	}
+	arg.colorHighlight = GetSysColorHook(colorHighlight);
+
+	arg.thisWnd = m_hWnd;
+
+	CFontHandle fontRestore;
+	CFont fontOverride;
+
+	LOGFONT data;
+	if (dc.GetCurrentFont().GetLogFont(&data)) {
+		if ( cellType->ApplyTextStyle( data, CellTextScale(item, subItem ), arg.cellState ) ) {
+			if (fontOverride.CreateFontIndirect( & data )) {
+				fontRestore = dc.SelectFont( fontOverride );
+			}
+		}
+	}
+	cellType->DrawContent( arg );
+
+	if ( fontRestore != NULL ) dc.SelectFont( fontRestore );
 }
 
 void CListControlHeaderImpl::RenderGroupHeaderText(int id,const CRect & headerRect,const CRect & updateRect,CDCHandle dc) {
@@ -1058,18 +915,20 @@ bool CListControlHeaderImpl::ToggleSelectedItemsHook(const pfc::bit_array & mask
 
 		mask.walk(GetItemCount(), [&](size_t idx) {
 			auto ct = this->GetCellType(idx, 0);
-			if ( ct == cell_radiocheckbox ) {
-				if (!handled) {
-					handled = true;
-					setTo = !this->GetCellCheckState(idx, 0);
-					this->SetCellCheckState(idx, 0, setTo);
+			if ( ct != nullptr && ct->IsToggle() ) {
+				if ( ct->IsRadioToggle() ) {
+					if (!handled) {
+						handled = true;
+						setTo = !this->GetCellCheckState(idx, 0);
+						this->SetCellCheckState(idx, 0, setTo);
+					}
+				} else {
+					if (!handled) {
+						handled = true;
+						setTo = ! this->GetCellCheckState(idx,0);
+					}
+					this->SetCellCheckState(idx,0,setTo);
 				}
-			} else if ( ct == cell_checkbox) {
-				if (!handled) {
-					handled = true;
-					setTo = ! this->GetCellCheckState(idx,0);
-				}
-				this->SetCellCheckState(idx,0,setTo);
 			}
 		});
 
@@ -1080,8 +939,8 @@ bool CListControlHeaderImpl::ToggleSelectedItemsHook(const pfc::bit_array & mask
 
 void CListControlHeaderImpl::OnSubItemClicked(t_size item, t_size subItem, CPoint pt) {
 	auto ct = GetCellType(item, subItem);
-	if ( ct == cell_checkbox || ct == cell_radiocheckbox ) {
-		if (CheckBoxRect(GetSubItemRect(item, subItem)).PtInRect(pt)) {
+	if ( ct != nullptr && ct->IsToggle() ) {
+		if ( ct->HotRect(GetSubItemRect(item, subItem)).PtInRect(pt) ) {
 			this->SetCellCheckState( item, subItem, ! GetCellCheckState( item, subItem ) );
 		}
 	}
@@ -1089,28 +948,18 @@ void CListControlHeaderImpl::OnSubItemClicked(t_size item, t_size subItem, CPoin
 
 
 bool CListControlHeaderImpl::AllowTypeFindInCell(size_t item, size_t subItem) const {
-	switch(GetCellType( item, subItem ) ) {
-	default:
-		return false;
-		// By default typefind in text cells and checkbox labels
-	case cell_text:
-	case cell_multitext:
-	case cell_checkbox:
-	case cell_radiocheckbox:
-		return true;
-	}
+	auto cell = GetCellType( item, subItem );
+	if ( cell == nullptr ) return false;
+	return cell->AllowTypeFind();
 }
 
 bool CListControlHeaderImpl::CellTypeReactsToMouseOver(cellType_t ct) {
-	if ( ct == cell_hyperlink ) return true;
-	if ( ct >= cell_button && ct < cell_button_total ) return true;
-	if ( ct >= cell_checkbox && ct <= cell_checkbox_total ) return true;
-	return false;
+	return ct != nullptr && ct->IsInteractive();
 }
 
 CRect CListControlHeaderImpl::CellHotRect( size_t, size_t, cellType_t ct, CRect rcCell) {
-	if ( ct >= cell_checkbox && ct < cell_checkbox_total ) {
-		return CheckBoxRect(rcCell);
+	if ( ct != nullptr ) {
+		return ct->HotRect(rcCell);
 	}
 	return rcCell;
 }
@@ -1126,8 +975,9 @@ void CListControlHeaderImpl::OnMouseMove(UINT nFlags, CPoint pt) {
 			if (CellTypeReactsToMouseOver(ct) ) {
 				auto rc = CellHotRect( item, subItem, ct );
 				if ( PtInRect( rc, pt ) ) {
-					if (ct == cell_hyperlink) {
-						SetCursor(LoadCursor(NULL, IDC_HAND));
+					{
+						auto c = ct->HotCursor();
+						if ( c != NULL ) SetCursor(c);
 					}
 					SetHotItem(item, subItem);
 					SetCaptureEx([=](UINT msg, DWORD newStatus, CPoint pt) {

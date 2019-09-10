@@ -152,6 +152,15 @@
     <ClInclude Include="CListControlTruncationTooltipImpl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CListControl-Cells.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CListControl-Cells-Compat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CListControl-Cell.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -218,6 +227,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TypeFind.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CListControl-Cells.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

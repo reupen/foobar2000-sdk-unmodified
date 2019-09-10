@@ -111,7 +111,7 @@ namespace pfc {
 	class bit_array_true : public bit_array
 	{
 	public:
-		bool get(t_size n) const {return true;}
+		bool get(t_size) const {return true;}
 		t_size find(bool val,t_size start,t_ssize count) const
 		{return val ? start : start+count;}
 	};
@@ -119,7 +119,7 @@ namespace pfc {
 	class bit_array_false : public bit_array
 	{
 	public:
-		bool get(t_size n) const {return false;}
+		bool get(t_size) const {return false;}
 		t_size find(bool val,t_size start,t_ssize count) const
 		{return val ? start+count : start;}
 	};
@@ -129,7 +129,7 @@ namespace pfc {
 		bool val;
 	public:
 		bit_array_val(bool v) : val(v) {}
-		bool get(t_size n) const {return val;}
+		bool get(t_size) const {return val;}
 		t_size find(bool p_val,t_size start,t_ssize count) const
 		{return val==p_val ? start : start+count;}
 	};

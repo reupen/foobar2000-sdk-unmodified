@@ -121,10 +121,14 @@ namespace InPlaceEdit {
 			rc.bottom = (LONG)( rc.top + (rc.bottom - rc.top) * lineCount );
 			m_editFlags |= KFlagMultiLine;
 		}
-		pfc::com_ptr_t<IUnknown> acl;
-		if (!TableEdit_GetAutoComplete(m_editItem, m_editSubItem, acl)) acl.release();
+		auto ac = this->TableEdit_GetAutoCompleteEx(m_editItem, m_editSubItem );
+		InPlaceEdit::StartEx(TableEdit_GetParentWnd(), rc, m_editFlags, m_editData, tableEdit_create_task(), ac.data.get_ptr(), ac.options);
+	}
 
-		InPlaceEdit::StartEx(TableEdit_GetParentWnd(), rc, m_editFlags, m_editData, tableEdit_create_task(), acl.get_ptr(), ACO_AUTOSUGGEST);
+	CTableEditHelperV2::autoComplete_t CTableEditHelperV2::TableEdit_GetAutoCompleteEx( size_t item, size_t sub ) {
+		autoComplete_t ret;
+		if ( this->TableEdit_GetAutoComplete( item, sub, ret.data ) ) ret.options = ret.optsDefault;
+		return ret;
 	}
 
 	void CTableEditHelperV2::tableEdit_on_task_completion(unsigned status) {

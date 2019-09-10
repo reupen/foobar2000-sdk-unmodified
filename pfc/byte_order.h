@@ -234,8 +234,8 @@ namespace pfc {
 		reverse_bytes<width-2>(p_buffer+1);
 	}
 
-	template<> inline void reverse_bytes<1>(t_uint8 * p_buffer) { }
-	template<> inline void reverse_bytes<0>(t_uint8 * p_buffer) { }
+	template<> inline void reverse_bytes<1>(t_uint8 * ) { }
+	template<> inline void reverse_bytes<0>(t_uint8 * ) { }
 
 	inline int32_t readInt24(const void * mem) {
 		const uint8_t * p = (const uint8_t*) mem;

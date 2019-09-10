@@ -5,6 +5,7 @@
 #include "resource.h"
 #include <helpers/atl-misc.h>
 #include <libPPUI/CListControlComplete.h>
+#include <libPPUI/CListControl-Cells.h>
 #include <string>
 #include <algorithm>
 #include <vector>
@@ -231,14 +232,20 @@ namespace {
 			return 1;
 		}
 		cellType_t GetCellType(size_t item, size_t subItem) const override {
+			// cellType_t is a pointer to a cell class object supplying cell behavior specification & rendering methods
+			// use PFC_SINGLETON to provide static instances of used cells
 			if ( item == footerRow() ) {
-				return subItem == 0 ? cell_button : cell_none;
+				if ( subItem == 0 ) {
+					return & PFC_SINGLETON( CListCell_Button );
+				} else {
+					return nullptr;
+				}
 			}
 			switch(subItem) {
 			case 0:
-				return cell_checkbox;
+				return & PFC_SINGLETON( CListCell_Checkbox );
 			default:
-				return cell_text;
+				return & PFC_SINGLETON( CListCell_Text );
 			}
 
 		}

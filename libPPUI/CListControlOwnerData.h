@@ -29,7 +29,8 @@ public:
 	}
 	virtual void listSetEditField(ctx_t ctx, size_t item, size_t subItem, const char * val) {}
 	virtual uint32_t listGetEditFlags(ctx_t ctx, size_t item, size_t subItem) {return 0;}
-	virtual pfc::com_ptr_t<IUnknown> listGetAutoComplete(ctx_t, size_t item, size_t subItem) {return nullptr;}
+	typedef InPlaceEdit::CTableEditHelperV2::autoComplete_t autoComplete_t;
+	virtual autoComplete_t listGetAutoComplete(ctx_t, size_t item, size_t subItem) {return autoComplete_t();}
 	virtual bool listIsColumnEditable( ctx_t, size_t ) { return false; }
 	virtual bool listKeyDown(ctx_t, UINT nChar, UINT nRepCnt, UINT nFlags) { return false; }
 	virtual bool listKeyUp(ctx_t, UINT nChar, UINT nRepCnt, UINT nFlags) { return false; }
@@ -46,6 +47,10 @@ public:
 
 	virtual void listSelChanged(ctx_t) {}
 	virtual void listFocusChanged(ctx_t) {}
+
+	virtual void listColumnsChanged(ctx_t) {}
+
+	virtual bool listEditCanAdvanceHere(ctx_t, size_t item, size_t subItem, uint32_t whatHappened) {(void) item; (void) subItem, (void) whatHappened; return true;}
 };
 
 class IListControlOwnerDataCells {
@@ -64,11 +69,11 @@ public:
 	CListControlOwnerData( IListControlOwnerDataSource * h) : m_host(h) {}
 
 	BEGIN_MSG_MAP_EX(CListControlOwnerData)
-		CHAIN_MSG_MAP(CListControlComplete)
 		MSG_WM_KEYDOWN(OnKeyDown)
 		MSG_WM_KEYUP(OnKeyUp)
 		MSG_WM_SYSKEYDOWN(OnKeyDown)
 		MSG_WM_SYSKEYUP(OnKeyUp)
+		CHAIN_MSG_MAP(CListControlComplete)
 	END_MSG_MAP()
 	
 	using CListControl_EditImpl::TableEdit_Abort;
@@ -140,9 +145,8 @@ protected:
 	t_uint32 TableEdit_GetEditFlags(t_size item, t_size subItem) const override {
 		return m_host->listGetEditFlags( this, item, subItem );
 	}
-	bool TableEdit_GetAutoComplete(t_size item, t_size subItem, pfc::com_ptr_t<IUnknown> & out) override {
-		out = m_host->listGetAutoComplete( this, item, subItem );
-		return out.is_valid();
+	autoComplete_t TableEdit_GetAutoCompleteEx(t_size item, t_size subItem) override {
+		return m_host->listGetAutoComplete( this, item, subItem );
 	}
 	bool TableEdit_IsColumnEditable(t_size subItem) const override {
 		return m_host->listIsColumnEditable( this, subItem );
@@ -150,7 +154,14 @@ protected:
 	void OnColumnHeaderClick(t_size index) override {
 		m_host->listColumnHeaderClick(this, index);
 	}
+	void OnColumnsChanged() override {
+		__super::OnColumnsChanged();
+		m_host->listColumnsChanged(this);
+	}
 private:
+	bool TableEdit_CanAdvanceHere( size_t item, size_t subItem, uint32_t whatHappened ) const override {
+		return m_host->listEditCanAdvanceHere(this, item, subItem, whatHappened);
+	}
 	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
 		bool handled = m_host->listKeyDown(this, nChar, nRepCnt, nFlags);
 		SetMsgHandled( !! handled );
