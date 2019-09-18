@@ -209,14 +209,14 @@ protected:
 		}
 	}
 	LONG AccGetItemRole( size_t index ) const override {
-		auto type = GetCellType( index, 0 );
+		auto type = this->GetCellType( index, 0 );
 		if ( type != nullptr ) {
 			return type->AccRole();
 		}
 		return ROLE_SYSTEM_LISTITEM;
 	}
 	bool AccIsItemChecked( size_t index ) const override {
-		auto type = GetCellType( index, 0 );
+		auto type = this->GetCellType( index, 0 );
 		if ( type != nullptr && type->IsToggle() ) {
 			return this->GetCellCheckState( index, 0 );
 		}

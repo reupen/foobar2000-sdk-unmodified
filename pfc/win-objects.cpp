@@ -80,7 +80,7 @@ void winUnPrefixPath(pfc::string_base & out, const char * p_path) {
 	const char * prepend_header = "\\\\?\\";
 	const char * prepend_header_net = "\\\\?\\UNC\\";
 	if (pfc::strcmp_partial(p_path, prepend_header_net) == 0) {
-		out = pfc::string_formatter() << "\\\\" << (p_path + strlen(prepend_header_net) );
+		out = PFC_string_formatter() << "\\\\" << (p_path + strlen(prepend_header_net) );
 		return;
 	}
 	if (pfc::strcmp_partial(p_path, prepend_header) == 0) {

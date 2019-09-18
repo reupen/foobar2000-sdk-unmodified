@@ -456,7 +456,7 @@ void CListControlHeaderImpl::AddColumn(const char * label, uint32_t width, DWORD
 
 float CListControlHeaderImpl::GetColumnWidthF(size_t subItem) const {
 	auto w = GetSubItemWidth(subItem);
-	return (float) w * 96.0 / (float)m_dpi.cx;
+	return (float) w * 96.0f / (float)m_dpi.cx;
 }
 
 void CListControlHeaderImpl::RenderBackground(CDCHandle dc, CRect const& rc) {
@@ -1016,7 +1016,9 @@ bool CListControlHeaderImpl::AllowScrollbar(bool vertical) const {
 }
 
 void CListControlHeaderImpl::OnDestroy() {
+	m_colRuntime.clear();
 	m_header = NULL;
+	m_headerLine = NULL;
 	SetMsgHandled(FALSE);
 }
 
