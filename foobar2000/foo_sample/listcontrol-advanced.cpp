@@ -264,7 +264,7 @@ namespace {
 				auto & rec = m_data[item];
 				if (rec.m_checkState != value) {
 					rec.m_checkState = value;
-					ReloadItem( item );
+					__super::SetCellCheckState(item, subItem, value);
 				}
 			}
 		}

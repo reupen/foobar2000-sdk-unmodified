@@ -332,7 +332,17 @@ void CListControlHeaderImpl::SetColumn( size_t which, const char * label, DWORD 
 	item.pszText = const_cast<TCHAR*>(labelOS.get_ptr());
 	m_header.SetItem( (int) which, &item );
 
+	if (which < m_colRuntime.size()) m_colRuntime[which].m_text = label;
+
 	if (updateView) OnColumnsChanged();
+}
+
+void CListControlHeaderImpl::GetColumnText(size_t which, pfc::string_base & out) const {
+	if (which < m_colRuntime.size()) {
+		out = m_colRuntime[which].m_text.c_str();
+	} else {
+		out = "";
+	}
 }
 
 void CListControlHeaderImpl::ResizeColumn(t_size index, t_uint32 widthPixels, bool updateView) {
@@ -907,6 +917,10 @@ void CListControlHeaderImpl::SetPressedItem(size_t row, size_t column) {
 	}
 }
 
+void CListControlHeaderImpl::SetCellCheckState(size_t item, size_t subItem, bool value) {
+	ReloadItem(item); (void)subItem; (void)value;
+	// Subclass deals with keeping track of state
+}
 
 bool CListControlHeaderImpl::ToggleSelectedItemsHook(const pfc::bit_array & mask) {
 	if (this->GetCellTypeSupported() ) {

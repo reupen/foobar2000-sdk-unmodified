@@ -889,8 +889,9 @@ LRESULT CListControlImpl::OnExecDeferred(UINT, WPARAM, LPARAM) {
 	for ( ;; ) { 
 		auto i = m_deferred.begin();
 		if ( i == m_deferred.end() ) break;
-		(*i)();
-		m_deferred.erase(i);
+		auto op = std::move(*i);
+		m_deferred.erase(i); // erase first, execute later - avoid erratic behavior if op alters the list
+		op();
 	}
 
 	m_defferredMsgPending = false;

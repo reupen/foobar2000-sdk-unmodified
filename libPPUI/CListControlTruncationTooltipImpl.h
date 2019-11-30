@@ -18,6 +18,7 @@ public:
 	END_MSG_MAP()
 
 	void OnViewOriginChange(CPoint p_delta) {TParent::OnViewOriginChange(p_delta);TooltipRemove();}
+	void TooltipRemove(); 
 protected:
 	virtual bool GetTooltipData( CPoint ptAbs, pfc::string_base & text, CRect & rc, CFontHandle & font) const;
 private:
@@ -38,7 +39,6 @@ private:
 	void TooltipActivate(const char * label, const CRect & rect);
 	void TooltipRemoveCheck(LPARAM pos);
 	void TooltipRemoveCheck();
-	void TooltipRemove();
 	void TooltipUpdateFont();
 	void OnSetFont(bool) {TooltipUpdateFont();}
 	bool IsRectFullyVisibleAbs(CRect const & r);

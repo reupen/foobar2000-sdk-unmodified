@@ -28,6 +28,7 @@ protected:
 	t_size TableEdit_GetItemCount() const override {return this->GetItemCount();}
 	t_size TableEdit_GetColumnCount() const override {return this->GetColumnCount();}
 	void TableEdit_SetItemFocus(t_size item, t_size subItem) override {
+		this->TooltipRemove();
 		this->SetFocusItem(item); this->SetSelection(pfc::bit_array_true(), pfc::bit_array_one(item));
 		auto rcView = this->GetVisibleRectAbs();
 		auto rcEdit = this->GetSubItemRectAbs(item,subItem);

@@ -120,12 +120,10 @@ void CListControlWithSelectionBase::OnKeyDown_SetIndexDeltaLineHelper(int p_delt
 	const int currentGroup = GetItemGroup(current);
 	if (GroupFocusActive()) {
 		if (p_delta < 0) {
-			if (currentGroup > 1) {
-				int targetGroup = currentGroup - 1;
-				t_size base, count;
-				if (ResolveGroupRange(targetGroup,base,count)) {
-					OnKeyDown_SetIndexHelper((int) (base + count - 1), p_keys);
-				}
+			int targetGroup = currentGroup - 1;
+			t_size base, count;
+			if (ResolveGroupRange(targetGroup, base, count)) {
+				OnKeyDown_SetIndexHelper((int)(base + count - 1), p_keys);
 			}
 		} else if (p_delta > 0) {
 			t_size base, count;

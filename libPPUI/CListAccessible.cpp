@@ -175,6 +175,9 @@ void CListAccessible::AccReloadItems(pfc::bit_array const & mask) {
 void CListAccessible::AccStateChange(pfc::bit_array const & mask) {
 	this->AccRefreshItems(mask, EVENT_OBJECT_STATECHANGE);
 }
+void CListAccessible::AccStateChange(size_t index) {
+	this->AccStateChange(pfc::bit_array_one(index));
+}
 void CListAccessible::AccRefreshItems(pfc::bit_array const & affected, UINT what) {
 	if (m_wnd == NULL || m_interface.is_empty()) return;
 	//if (GetFocus() != m_hWnd) return;
