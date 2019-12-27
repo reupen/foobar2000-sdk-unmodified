@@ -1,4 +1,5 @@
 #pragma once
+#include <uxtheme.h> // HTHEME
 
 class CListCell {
 public:

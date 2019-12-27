@@ -9,6 +9,7 @@
 #include "win32_utility.h"
 #include "listview_helper.h" // ListView_GetColumnCount
 
+#include <forward_list>
 
 #ifndef WM_MOUSEHWHEEL
 #define WM_MOUSEHWHEEL 0x20E
@@ -25,7 +26,8 @@ namespace {
 	};
 
 
-	static pfc::avltree_t<HWND> g_editboxes;
+	// Rationale: more than one HWND on the list is extremely uncommon, hence forward_list
+	static std::forward_list<HWND> g_editboxes;
 	static HHOOK g_hook = NULL /*, g_keyHook = NULL*/;
 
 	static void GAbortEditing(HWND edit, t_uint32 code) {
@@ -35,7 +37,7 @@ namespace {
 	}
 
 	static void GAbortEditing(t_uint32 code) {
-		for (auto walk = g_editboxes.cfirst(); walk.is_valid(); ++walk) {
+		for (auto walk = g_editboxes.begin(); walk != g_editboxes.end(); ++walk) {
 			GAbortEditing(*walk, code);
 		}
 	}
@@ -45,7 +47,7 @@ namespace {
 	}
 
 	static void MouseEventTest(HWND target, CPoint pt, bool isWheel) {
-		for (auto walk = g_editboxes.cfirst(); walk.is_valid(); ++walk) {
+		for (auto walk = g_editboxes.begin(); walk != g_editboxes.end(); ++walk) {
 			CWindow edit(*walk);
 			bool cancel = false;
 			if (target != edit && IsSamePopup(target, edit)) {
@@ -86,7 +88,7 @@ namespace {
 
 	static void on_editbox_creation(HWND p_editbox) {
 		// PFC_ASSERT(core_api::is_main_thread());
-		g_editboxes.add(p_editbox);
+		g_editboxes.push_front(p_editbox);
 		if (g_hook == NULL) {
 			g_hook = SetWindowsHookEx(WH_MOUSE, GMouseProc, NULL, GetCurrentThreadId());
 		}
@@ -100,8 +102,8 @@ namespace {
 	}
 	static void on_editbox_destruction(HWND p_editbox) {
 		// PFC_ASSERT(core_api::is_main_thread());
-		g_editboxes.remove_item(p_editbox);
-		if (g_editboxes.get_count() == 0) {
+		g_editboxes.remove(p_editbox);
+		if (g_editboxes.empty()) {
 			UnhookHelper(g_hook); /*UnhookHelper(g_keyHook);*/
 		}
 	}
@@ -116,7 +118,8 @@ namespace {
 			MSG_WM_KILLFOCUS(OnKillFocus)
 			MSG_WM_CHAR(OnChar)
 			MSG_WM_KEYDOWN(OnKeyDown)
-			END_MSG_MAP()
+		END_MSG_MAP()
+
 		void OnCreation() {
 			on_editbox_creation(m_hWnd);
 		}

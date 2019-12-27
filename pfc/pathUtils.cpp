@@ -148,7 +148,14 @@ string getIllegalNameChars(bool allowWC) {
 
 #ifdef _WINDOWS
 static bool isIllegalTrailingChar(char c) {
-	return c == ' ' || c == '.';
+	switch (c) {
+	case ' ':
+	case '.':
+	case '?':
+		return true;
+	default:
+		return false;
+	}
 }
 static const char * const specialIllegalNames[] = {
 	"con", "aux", "lst", "prn", "nul", "eof", "inp", "out"
@@ -198,36 +205,48 @@ static string truncatePathComponent( string name, bool preserveExt ) {
 }
 
 #endif
-
+static string trailingSanity(string name, bool preserveExt) {
+	t_size end = name.length();
+	if (preserveExt) {
+		size_t offset = pfc::string_find_last(name.c_str(), '.');
+		if (offset < end) end = offset;
+	}
+	const size_t endEx = end;
+	while (end > 0) {
+		if (!isIllegalTrailingChar(name[end - 1])) break;
+		--end;
+	}
+	t_size begin = 0;
+	while (begin < end) {
+		if (!isIllegalTrailingChar(name[begin])) break;
+		++begin;
+	}
+	if (end < endEx || begin > 0) {
+		name = name.subString(begin, end - begin) + name.subString(endEx);
+	}
+	return name;
+}
 string validateFileName(string name, bool allowWC, bool preserveExt) {
-	for(t_size walk = 0; name[walk];) {
-		if (name[walk] == '?') {
-			t_size end = walk;
-			do { ++end; } while(name[end] == '?');
-			if ( walk == 0 && name[end] == '.' ) {
-				name = string("[unnamed]") + name.subString(end);
-			} else {
-				name = name.subString(0, walk) + name.subString(end);
-			}			
-		} else {
-			++walk;
+	if (!allowWC) { // special fix for filenames that consist only of question marks
+		size_t end = name.length();
+		if (preserveExt) {
+			size_t offset = pfc::string_find_last(name.c_str(), '.');
+			if (offset < end) end = offset;
+		}
+		bool unnamed = true;
+		for (size_t walk = 0; walk < end; ++walk) {
+			if (name[walk] != '?') unnamed = false;
+		}
+		if (unnamed) {
+			name = string("[unnamed]") + name.subString(end);
 		}
 	}
 #ifdef _WINDOWS
-	name = replaceIllegalNameChars(name, allowWC);
-	if (name.length() > 0) {
-		t_size end = name.length();
-		while(end > 0) {
-			if (!isIllegalTrailingChar(name[end-1])) break;
-			--end;
-		}
-		t_size begin = 0;
-		while(begin < end) {
-			if (!isIllegalTrailingChar(name[begin])) break;
-			++begin;
-		}
-		if (end < name.length() || begin > 0) name = name.subString(begin,end - begin);
+	if (name.length() > 0 && !allowWC) {
+		name = trailingSanity(name, preserveExt);
 	}
+
+	name = replaceIllegalNameChars(name, allowWC);
 
 	name = truncatePathComponent(name, preserveExt);
 	
