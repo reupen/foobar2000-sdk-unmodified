@@ -16,6 +16,7 @@ class IListControlOwnerDataSource {
 public:
 	typedef const CListControlOwnerData * ctx_t;
 
+
 	virtual size_t listGetItemCount( ctx_t ) = 0;
 	virtual pfc::string8 listGetSubItemText( ctx_t, size_t item, size_t subItem ) = 0;
 	virtual bool listCanReorderItems( ctx_t ) { return false; }
@@ -30,7 +31,10 @@ public:
 	virtual void listSetEditField(ctx_t ctx, size_t item, size_t subItem, const char * val) {}
 	virtual uint32_t listGetEditFlags(ctx_t ctx, size_t item, size_t subItem) {return 0;}
 	typedef InPlaceEdit::CTableEditHelperV2::autoComplete_t autoComplete_t;
+	typedef InPlaceEdit::CTableEditHelperV2::combo_t combo_t;
 	virtual autoComplete_t listGetAutoComplete(ctx_t, size_t item, size_t subItem) {return autoComplete_t();}
+	virtual combo_t listGetCombo(ctx_t, size_t item, size_t subItem) { return combo_t(); }
+	
 	virtual bool listIsColumnEditable( ctx_t, size_t ) { return false; }
 	virtual bool listKeyDown(ctx_t, UINT nChar, UINT nRepCnt, UINT nFlags) { return false; }
 	virtual bool listKeyUp(ctx_t, UINT nChar, UINT nRepCnt, UINT nFlags) { return false; }
@@ -44,6 +48,7 @@ public:
 	virtual void listColumnHeaderClick(ctx_t, size_t subItem) {}
 
 	virtual void listBeforeDrawItemText( ctx_t, size_t item, CDCHandle dc ) {}
+	virtual bool listIsSubItemGrayed(ctx_t, size_t item, size_t subItem) { return false; }
 
 	virtual void listSelChanged(ctx_t) {}
 	virtual void listFocusChanged(ctx_t) {}
@@ -145,6 +150,10 @@ protected:
 	t_uint32 TableEdit_GetEditFlags(t_size item, t_size subItem) const override {
 		return m_host->listGetEditFlags( this, item, subItem );
 	}
+
+	combo_t TableEdit_GetCombo(size_t item, size_t subItem) override {
+		return m_host->listGetCombo(this, item, subItem);
+	}
 	autoComplete_t TableEdit_GetAutoCompleteEx(t_size item, t_size subItem) override {
 		return m_host->listGetAutoComplete( this, item, subItem );
 	}
@@ -157,6 +166,9 @@ protected:
 	void OnColumnsChanged() override {
 		__super::OnColumnsChanged();
 		m_host->listColumnsChanged(this);
+	}
+	bool IsSubItemGrayed(size_t item, size_t subItem) override {
+		return __super::IsSubItemGrayed(item, subItem) || m_host->listIsSubItemGrayed(this, item, subItem);
 	}
 private:
 	bool TableEdit_CanAdvanceHere( size_t item, size_t subItem, uint32_t whatHappened ) const override {

@@ -6,20 +6,15 @@
 #include "GDIUtils.h"
 #include <vsstyle.h>
 
-/* FIX ME LIST 
-Cell disabled state (from disabled window), drop window arg?
-Fewer stupid methods ?
-*/
-
 LONG CListCell::AccRole() {
 	return ROLE_SYSTEM_LISTITEM;
 }
 
-void RenderCheckbox( HTHEME theme, CWindow wnd, CDCHandle dc, CRect rcCheckBox, unsigned stateFlags, bool bRadio ) {
+void RenderCheckbox( HTHEME theme, CDCHandle dc, CRect rcCheckBox, unsigned stateFlags, bool bRadio ) {
 
 	const int part = bRadio ? BP_RADIOBUTTON : BP_CHECKBOX;
 
-	const bool bDisabled = ! wnd.IsWindowEnabled();
+	const bool bDisabled = (stateFlags & CListCell::cellState_disabled) != 0;
 	const bool bPressed = (stateFlags & CListCell::cellState_pressed ) != 0;
 	const bool bHot = ( stateFlags & CListCell::cellState_hot ) != 0;
 
@@ -53,7 +48,7 @@ void RenderCheckbox( HTHEME theme, CWindow wnd, CDCHandle dc, CRect rcCheckBox, 
 	DrawFrameControl(dc, rcCheckBox, DFC_BUTTON, stateEx);
 }
 
-void RenderButton( HTHEME theme, CWindow wnd, CDCHandle dc, CRect rcButton, CRect rcUpdate, uint32_t cellState ) {
+void RenderButton( HTHEME theme, CDCHandle dc, CRect rcButton, CRect rcUpdate, uint32_t cellState ) {
 
 	const int part = BP_PUSHBUTTON;
 
@@ -65,7 +60,7 @@ void RenderButton( HTHEME theme, CWindow wnd, CDCHandle dc, CRect rcButton, CRec
 	};
 
 	int state = 0;
-	if (!wnd.IsWindowEnabled()) state = stDisabled;
+	if (cellState & CListCell::cellState_disabled) state = stDisabled;
 	if ( cellState & CListCell::cellState_pressed ) state = stPressed;
 	else if ( cellState & CListCell::cellState_hot ) state = stHot;
 	else state = stNormal;
@@ -94,12 +89,19 @@ bool CListCell::ApplyTextStyle( LOGFONT & font, double scale, uint32_t ) {
 }
 
 void CListCell_Text::DrawContent( DrawContentArg_t const & arg ) {
+	const auto fgWas = arg.dc.GetTextColor();
 	CDCHandle dc = arg.dc;
+	if (arg.cellState & cellState_disabled) {
+		dc.SetTextColor(GetSysColor(COLOR_GRAYTEXT));
+	}
+	
 	
 	CRect clip = arg.rcText;
 
 	const t_uint32 format = PaintUtils::DrawText_TranslateHeaderAlignment(arg.hdrFormat);
 	dc.DrawText( arg.text, (int)wcslen(arg.text), clip, format | DT_NOPREFIX | DT_END_ELLIPSIS | DT_SINGLELINE | DT_VCENTER  );
+
+	dc.SetTextColor(fgWas);
 }
 
 void CListCell_TextColors::DrawContent( DrawContentArg_t const & arg ) {
@@ -189,7 +191,7 @@ void CListCell_Button::DrawContent( DrawContentArg_t const & arg ) {
 
 	
 	if ( !m_lite || bHot || bPressed ) {
-		RenderButton( arg.theme, arg.thisWnd, dc, arg.rcHot, arg.rcHot, arg.cellState );
+		RenderButton( arg.theme, dc, arg.rcHot, arg.rcHot, arg.cellState );
 	}
 
 	CRect clip = arg.rcText;
@@ -231,12 +233,66 @@ void CListCell_Checkbox::DrawContent( DrawContentArg_t const & arg ) {
 	if (arg.subItemRect.Width() > arg.subItemRect.Height() ) {
 		CRect rcCheckbox = arg.subItemRect;
 		rcCheckbox.right = rcCheckbox.left + rcCheckbox.Height();
-		RenderCheckbox(arg.theme, arg.thisWnd, dc, rcCheckbox, arg.cellState, m_radio );
+		RenderCheckbox(arg.theme, dc, rcCheckbox, arg.cellState, m_radio );
 		CRect rcText = arg.subItemRect;
 		rcText.left = rcCheckbox.right;
+		if (arg.cellState & cellState_disabled) {
+			dc.SetTextColor(GetSysColor(COLOR_GRAYTEXT));
+		}
 		dc.DrawText(arg.text, (int) wcslen(arg.text), rcText, DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_LEFT);
 	} else {
-		RenderCheckbox(arg.theme, arg.thisWnd, dc, arg.subItemRect, arg.cellState, m_radio );
+		RenderCheckbox(arg.theme, dc, arg.subItemRect, arg.cellState, m_radio );
 	}
 
+	dc.SetTextColor(fgWas);
+}
+
+void CListCell_Text_FixedColor::DrawContent(DrawContentArg_t const & arg) {
+	if (arg.allowColors) {
+		SetTextColorScope scope(arg.dc, m_col);
+		__super::DrawContent(arg);
+	} else {
+		__super::DrawContent(arg);
+	}
+}
+
+void CListCell_Combo::DrawContent(DrawContentArg_t const & arg) {
+	CDCHandle dc = arg.dc;
+
+	const bool bDisabled = (arg.cellState & CListCell::cellState_disabled) != 0;
+	const bool bPressed = (arg.cellState & cellState_pressed) != 0;
+	const bool bHot = (arg.cellState & cellState_hot) != 0;
+
+	const int part = CP_DROPDOWNBUTTONRIGHT;
+
+	const HTHEME theme = arg.theme;
+
+	if (theme != NULL && IsThemePartDefined(theme, part, 0)) {
+		int state = CBXSR_NORMAL;
+		if (bDisabled) {
+			state = CBXSR_DISABLED;
+		} else if (bPressed) {
+			state = CBXSR_PRESSED;
+		} else if (bHot) {
+			state = CBXSR_HOT;
+		}
+
+		CSize size;
+		CRect rcCombo = arg.subItemRect;
+		CRect rcText = arg.rcText;
+		int w = rcCombo.Height()*3/4;
+		if (w < rcCombo.Width()) {
+			rcCombo.left = rcCombo.right - w;
+			DrawThemeBackground(theme, dc, part, state, rcCombo, &rcCombo);
+			if (rcCombo.left < rcText.right ) rcText.right = rcCombo.left;
+		}
+
+		DrawContentArg_t arg2 = arg;
+		arg2.rcText = rcText;
+		PFC_SINGLETON(CListCell_Text).DrawContent(arg2);
+	}
+}
+
+LONG CListCell_Combo::AccRole() {
+	return ROLE_SYSTEM_DROPLIST;
 }

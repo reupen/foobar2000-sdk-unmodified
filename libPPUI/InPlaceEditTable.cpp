@@ -94,7 +94,8 @@ namespace InPlaceEdit {
 				}
 			}
 			m_editData.release();
-			SetFocus(NULL);
+			m_editDataCombo.reset();
+			::SetFocus(TableEdit_GetParentWnd());
 			TableEdit_Finished();
 		}
 
@@ -111,10 +112,32 @@ namespace InPlaceEdit {
 		PFC_ASSERT(m_editSubItem < TableEdit_GetColumnCount());
 
 		TableEdit_SetItemFocus(m_editItem, m_editSubItem);
+
+		m_editFlags = TableEdit_GetEditFlags(m_editItem, m_editSubItem);
+
+		m_editData.release();
+		m_editDataCombo.reset();
+
+		if (m_editFlags & InPlaceEdit::KFlagCombo) {
+			auto combo = TableEdit_GetCombo(m_editItem, m_editSubItem);
+			RECT rc = TableEdit_GetItemRect(m_editItem, m_editSubItem);
+
+			auto data = std::make_shared< combo_t >(combo);
+			m_editDataCombo = data;
+
+			auto task = tableEdit_create_task();
+			auto comboTask = [data, task](unsigned status, unsigned sel) {
+				data->iDefault = sel;
+				task(status);
+			};
+
+			InPlaceEdit::StartCombo(TableEdit_GetParentWnd(), rc, m_editFlags, combo.strings, combo.iDefault, comboTask );
+			return;
+		}
+
 		m_editData.new_t();
 		t_size lineCount = 1;
 		TableEdit_GetField(m_editItem, m_editSubItem, *m_editData, lineCount);
-		m_editFlags = TableEdit_GetEditFlags(m_editItem, m_editSubItem);
 
 		RECT rc = TableEdit_GetItemRect(m_editItem, m_editSubItem);
 		if (lineCount > 1) {
@@ -125,6 +148,9 @@ namespace InPlaceEdit {
 		InPlaceEdit::StartEx(TableEdit_GetParentWnd(), rc, m_editFlags, m_editData, tableEdit_create_task(), ac.data.get_ptr(), ac.options);
 	}
 
+	CTableEditHelperV2::combo_t CTableEditHelperV2::TableEdit_GetCombo(size_t item, size_t sub) {
+		return combo_t();
+	}
 	CTableEditHelperV2::autoComplete_t CTableEditHelperV2::TableEdit_GetAutoCompleteEx( size_t item, size_t sub ) {
 		autoComplete_t ret;
 		if ( this->TableEdit_GetAutoComplete( item, sub, ret.data ) ) ret.options = ret.optsDefault;
@@ -138,6 +164,15 @@ namespace InPlaceEdit {
 				TableEdit_SetField(m_editItem, m_editSubItem, *m_editData);
 			}
 			m_editData.release();
+		}
+		if (m_editDataCombo != nullptr) {
+			unsigned idx = m_editDataCombo->iDefault;
+			if ( idx < m_editDataCombo->strings.get_count()) {
+				const char * text = m_editDataCombo->strings.get_item(idx);
+				TableEdit_SetField(m_editItem, m_editSubItem, text);
+			}
+
+			m_editDataCombo.reset();
 		}
 
 		if (TableEdit_Advance(m_editItem, m_editSubItem, status)) {

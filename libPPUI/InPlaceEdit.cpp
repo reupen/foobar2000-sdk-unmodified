@@ -8,6 +8,7 @@
 #include "CWindowCreateAndDelete.h"
 #include "win32_utility.h"
 #include "listview_helper.h" // ListView_GetColumnCount
+#include "clipboard.h"
 
 #include <forward_list>
 
@@ -110,7 +111,7 @@ namespace {
 
 	class CInPlaceEditBox : public CContainedWindowSimpleT<CEdit> {
 	public:
-		CInPlaceEditBox() : m_selfDestruct(), m_suppressChar() {}
+		CInPlaceEditBox(uint32_t flags) : m_flags(flags) {}
 		BEGIN_MSG_MAP_EX(CInPlaceEditBox)
 			//MSG_WM_CREATE(OnCreate)
 			MSG_WM_DESTROY(OnDestroy)
@@ -118,6 +119,7 @@ namespace {
 			MSG_WM_KILLFOCUS(OnKillFocus)
 			MSG_WM_CHAR(OnChar)
 			MSG_WM_KEYDOWN(OnKeyDown)
+			MSG_WM_PASTE(OnPaste)
 		END_MSG_MAP()
 
 		void OnCreation() {
@@ -160,11 +162,56 @@ namespace {
 			SetMsgHandled(FALSE);
 		}
 
+		bool testPaste(const char* str) {
+			if (m_flags & InPlaceEdit::KFlagNumberSigned) {
+				if (pfc::string_is_numeric(str)) return true;
+				if (str[0] == '-' && pfc::string_is_numeric(str + 1) && GetWindowTextLength() == 0) return true;
+				return false;
+			}
+			if (m_flags & InPlaceEdit::KFlagNumber) {
+				return pfc::string_is_numeric(str);
+			}
+			return true;
+		}
+
+		void OnPaste() {
+			if (m_flags & (InPlaceEdit::KFlagNumber | InPlaceEdit::KFlagNumberSigned)) {
+				pfc::string8 temp;
+				ClipboardHelper::OpenScope scope; scope.Open(m_hWnd);
+				if (ClipboardHelper::GetString(temp)) {
+					if (!testPaste(temp)) return;
+				}
+			}
+			// Let edit box handle it
+			SetMsgHandled(FALSE);
+		}
+		bool testChar(UINT nChar) {
+			// Allow various non text characters
+			if (nChar < ' ') return true;
+
+			if (m_flags & InPlaceEdit::KFlagNumberSigned) {
+				if (pfc::char_is_numeric(nChar)) return true;
+				if (nChar == '-') {
+					return GetWindowTextLength() == 0;
+				}
+				return false;
+			}
+			if (m_flags & InPlaceEdit::KFlagNumber) {
+				return pfc::char_is_numeric(nChar);
+			}
+			return true;
+		}
 		void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags) {
 			if (m_suppressChar != 0) {
 				UINT code = nFlags & 0xFF;
 				if (code == m_suppressChar) return;
 			}
+
+			if (!testChar(nChar)) {
+				MessageBeep(0);
+				return;
+			}
+
 			SetMsgHandled(FALSE);
 		}
 		void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
@@ -207,8 +254,9 @@ namespace {
 			}
 		}
 
-		bool m_selfDestruct;
-		UINT m_suppressChar;
+		const uint32_t m_flags;
+		bool m_selfDestruct = false;
+		UINT m_suppressChar = 0;
 	};
 
 	class InPlaceEditContainer : public CWindowImpl<InPlaceEditContainer> {
@@ -244,6 +292,10 @@ namespace {
 				else if (m_flags & KFlagAlignRight) style |= ES_RIGHT;
 				else style |= ES_LEFT;
 
+				// ES_NUMBER is buggy in many ways (repaint glitches after balloon popup) and does not allow signed numbers.
+				// We implement number handling by filtering WM_CHAR instead.
+				// if (m_flags & KFlagNumber) style |= ES_NUMBER;
+
 
 				CEdit edit;
 
@@ -272,7 +324,9 @@ namespace {
 		}
 
 		InPlaceEditContainer(const RECT & p_rect, t_uint32 p_flags, pfc::rcptr_t<pfc::string_base> p_content, reply_t p_notify, IUnknown * ACData, DWORD ACOpts)
-			: m_content(p_content), m_notify(p_notify), m_completed(false), m_initialized(false), m_changed(false), m_disable_editing(false), m_initRect(p_rect), m_flags(p_flags), m_selfDestruct(), m_ACData(ACData), m_ACOpts(ACOpts)
+			: m_content(p_content), m_notify(p_notify), m_completed(false), m_initialized(false), m_changed(false), m_disable_editing(false), m_initRect(p_rect), 
+			m_flags(p_flags), m_selfDestruct(), m_ACData(ACData), m_ACOpts(ACOpts),
+			m_edit(p_flags)
 		{
 		}
 
@@ -287,7 +341,7 @@ namespace {
 			MESSAGE_HANDLER_EX(MSG_COMPLETION, OnMsgCompletion)
 			COMMAND_HANDLER_EX(ID_MYEDIT, EN_CHANGE, OnEditChange)
 			MSG_WM_DESTROY(OnDestroy)
-			END_MSG_MAP()
+		END_MSG_MAP()
 
 		HWND GetEditBox() const { return m_edit; }
 

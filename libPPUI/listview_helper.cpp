@@ -274,3 +274,11 @@ void CHeaderCtrlEx::SetSingleItemSort(int iItem, int direction) {
 void CHeaderCtrlEx::ClearSort() {
 	SetSingleItemSort(-1,0);
 }
+
+int CListViewCtrlEx::AddGroup(int iGroupID, const wchar_t * header) {
+	LVGROUP g = { sizeof(g) };
+	g.mask = LVGF_HEADER | LVGF_GROUPID;
+	g.pszHeader = const_cast<wchar_t*>( header );
+	g.iGroupId = iGroupID;
+	return __super::AddGroup(&g);
+}

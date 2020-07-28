@@ -19,14 +19,14 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v141_xp</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -44,7 +44,6 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>MinSpace</Optimization>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_WIN32_WINNT=0x501;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -55,12 +54,12 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <AdditionalIncludeDirectories>../..</AdditionalIncludeDirectories>
       <AdditionalOptions>/d2notypeopt %(AdditionalOptions)</AdditionalOptions>
       <TreatSpecificWarningsAsErrors>4715</TreatSpecificWarningsAsErrors>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <OmitFramePointers>true</OmitFramePointers>
+      <PreprocessorDefinitions>NDEBUG;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -73,7 +72,6 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_WIN32_WINNT=0x501;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
@@ -84,7 +82,6 @@
       <AdditionalIncludeDirectories>../..</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4715</TreatSpecificWarningsAsErrors>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -153,6 +150,7 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
     </ClCompile>
+    <ClCompile Include="text_file_loader_v2.cpp" />
     <ClCompile Include="ThreadUtils.cpp" />
     <ClCompile Include="track_property_callback_impl.cpp" />
     <ClCompile Include="ui_element_helpers.cpp" />
@@ -170,6 +168,7 @@
     <ClCompile Include="writer_wav.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="advconfig_impl.h" />
     <ClInclude Include="advconfig_runtime.h" />
     <ClInclude Include="album_art_helpers.h" />
     <ClInclude Include="atl-misc.h" />
@@ -184,6 +183,7 @@
     <ClInclude Include="fb2k_threads.h" />
     <ClInclude Include="fb2k_wfx.h" />
     <ClInclude Include="fileReadAhead.h" />
+    <ClInclude Include="file_readonly.h" />
     <ClInclude Include="foobar2000+atl.h" />
     <ClInclude Include="fullFileBuffer.h" />
     <ClInclude Include="bitreader_helper.h" />
@@ -211,6 +211,7 @@
     <ClInclude Include="input_helper_cue.h" />
     <ClInclude Include="input_logging.h" />
     <ClInclude Include="input_stream_info_reader.h" />
+    <ClInclude Include="metadb_handle_set.h" />
     <ClInclude Include="meta_table_builder.h" />
     <ClInclude Include="metadb_io_hintlist.h" />
     <ClInclude Include="mp3_utils.h" />
@@ -227,6 +228,7 @@
     <ClInclude Include="stream_buffer_helper.h" />
     <ClInclude Include="tag_write_callback_impl.h" />
     <ClInclude Include="text_file_loader.h" />
+    <ClInclude Include="text_file_loader_v2.h" />
     <ClInclude Include="ThreadUtils.h" />
     <ClInclude Include="track_property_callback_impl.h" />
     <ClInclude Include="TypeFind.h" />

@@ -17,11 +17,11 @@ static bool testDrawLineBelowHeader() {
 
 void CListControlHeaderImpl::InitializeHeaderCtrl(DWORD flags) {
 	PFC_ASSERT(!IsHeaderEnabled());
-	WIN32_OP( m_header.Create(*this,NULL,NULL,WS_CHILD | flags) != NULL);
+	WIN32_OP_D( m_header.Create(*this,NULL,NULL,WS_CHILD | flags) != NULL );
 	m_header.SetFont( GetFont() );
 
 	if (testDrawLineBelowHeader()) {
-		m_headerLine.Create( *this, NULL, NULL, WS_CHILD );
+		WIN32_OP_D( m_headerLine.Create( *this, NULL, NULL, WS_CHILD ) != NULL );
 	}
 
 	UpdateHeaderLayout();
@@ -619,6 +619,10 @@ void CListControlHeaderImpl::RenderSubItemText(t_size item, t_size subItem,const
 	arg.colorHighlight = GetSysColorHook(colorHighlight);
 
 	arg.thisWnd = m_hWnd;
+
+	if (this->IsSubItemGrayed( item, subItem ) ) {
+		arg.cellState |= CListCell::cellState_disabled;
+	}
 
 	CFontHandle fontRestore;
 	CFont fontOverride;

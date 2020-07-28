@@ -75,5 +75,20 @@ public:
 	static CListCell_RadioCheckbox instance;
 };
 
-void RenderButton( HTHEME theme, CWindow wnd, CDCHandle dc, CRect rcButton, CRect rcUpdate, uint32_t cellState );
-void RenderCheckbox( HTHEME theme, CWindow wnd, CDCHandle dc, CRect rcCheckBox, unsigned stateFlags, bool bRadio );
+class CListCell_Combo : public CListCell_Interactive {
+public:
+	void DrawContent(DrawContentArg_t const &) override;
+	const char * Theme() override { return "COMBOBOX"; }
+	LONG AccRole() override;
+};
+
+void RenderButton( HTHEME theme, CDCHandle dc, CRect rcButton, CRect rcUpdate, uint32_t cellState );
+void RenderCheckbox( HTHEME theme, CDCHandle dc, CRect rcCheckBox, unsigned stateFlags, bool bRadio );
+
+
+class CListCell_Text_FixedColor : public CListCell_Text {
+	const COLORREF m_col;
+public:
+	CListCell_Text_FixedColor(COLORREF col) : m_col(col) {}
+	void DrawContent(DrawContentArg_t const & arg) override;
+};

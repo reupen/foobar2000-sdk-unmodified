@@ -1,15 +1,17 @@
-#include "pfc.h"
+﻿#include "pfc.h"
+
+static_assert(L'Ö' == 0xD6, "Compile as Unicode!!!");
 
 namespace pfc { namespace io { namespace path {
 
 #ifdef _WINDOWS
-static const string g_pathSeparators ("\\/|");
+#define KPathSeparators "\\/|"
 #else
-static const string g_pathSeparators ("/");
+#define KPathSeparators "/"
 #endif
 
 string getFileName(string path) {
-	t_size split = path.lastIndexOfAnyChar(g_pathSeparators);
+	t_size split = path.lastIndexOfAnyChar(KPathSeparators);
 	if (split == ~0) return path;
 	else return path.subString(split+1);
 }
@@ -28,7 +30,7 @@ string getFileExtension(string path) {
 string getDirectory(string filePath) {return getParent(filePath);}
 
 string getParent(string filePath) {
-	t_size split = filePath.lastIndexOfAnyChar(g_pathSeparators);
+	t_size split = filePath.lastIndexOfAnyChar(KPathSeparators);
 	if (split == ~0) return "";
 #ifdef _WINDOWS
 	if (split > 0 && getIllegalNameChars().contains(filePath[split-1])) {
@@ -51,27 +53,53 @@ string combine(string basePath,string fileName) {
 }
 
 bool isSeparator(char c) {
-	return g_pathSeparators.indexOf(c) != ~0;
+    return strchr(KPathSeparators, c) != nullptr;
 }
 string getSeparators() {
-	return g_pathSeparators;
+	return KPathSeparators;
 }
 
-static string replaceIllegalChar(char c) {
-	switch(c) {
-		case '*':
-			return "x";
-		case '\"':
-			return "\'\'";
-		case ':':
-		case '/':
-		case '\\':
-			return "-";
-		default:
-			return "_";
+const char * charReplaceDefault(char c) {
+	switch (c) {
+	case '*':
+		return "x";
+	case '\"':
+		return "\'\'";
+	case ':':
+	case '/':
+	case '\\':
+		return "-";
+	default:
+		return "_";
 	}
 }
-string replaceIllegalPathChars(string fn) {
+
+const char * charReplaceModern(char c) {
+	switch (c) {
+	case '*':
+		return u8"∗";
+	case '\"':
+		return u8"''";
+	case ':':
+		return u8"∶";
+	case '/':
+		return u8"⁄";
+	case '\\':
+		return u8"⧵";
+	case '?':
+		return u8"？";
+	case '<':
+		return u8"˂";
+	case '>':
+		return u8"˃";
+	case '|':
+		return u8"∣";
+	default:
+		return "_";
+	}
+}
+
+string replaceIllegalPathChars(string fn, charReplace_t replaceIllegalChar) {
 	string illegal = getIllegalNameChars();
 	string separators = getSeparators();
 	string_formatter output;
@@ -90,7 +118,7 @@ string replaceIllegalPathChars(string fn) {
 	return output.toString();
 }
 
-string replaceIllegalNameChars(string fn, bool allowWC) {
+string replaceIllegalNameChars(string fn, bool allowWC, charReplace_t replaceIllegalChar) {
 	const string illegal = getIllegalNameChars(allowWC);
 	string_formatter output;
 	for(t_size walk = 0; walk < fn.length(); ++walk) {
@@ -129,34 +157,26 @@ char getDefaultSeparator() {
 #endif
 }
 
-static const string g_illegalNameChars(g_pathSeparators
 #ifdef _WINDOWS
-									   + ":<>*?\""
+#define KIllegalNameCharsEx ":<>\""
 #else
-                                       + "*?"
+// Mac OS allows : in filenames but does funny things presenting them in Finder, so don't use it
+#define KIllegalNameCharsEx ":"
 #endif
-									   );
-    
-static const string g_illegalNameChars_noWC(g_pathSeparators
-#ifdef _WINDOWS
-									   + ":<>?\""
-#endif
-									   );
+
+#define KWildcardChars "*?"
+ 
+#define KIllegalNameChars KPathSeparators KIllegalNameCharsEx KWildcardChars
+#define KIllegalNameChars_noWC KPathSeparators KIllegalNameCharsEx
+
+static string g_illegalNameChars ( KIllegalNameChars );
+static string g_illegalNameChars_noWC ( KIllegalNameChars_noWC );
+
 string getIllegalNameChars(bool allowWC) {
 	return allowWC ? g_illegalNameChars_noWC : g_illegalNameChars;
 }
 
 #ifdef _WINDOWS
-static bool isIllegalTrailingChar(char c) {
-	switch (c) {
-	case ' ':
-	case '.':
-	case '?':
-		return true;
-	default:
-		return false;
-	}
-}
 static const char * const specialIllegalNames[] = {
 	"con", "aux", "lst", "prn", "nul", "eof", "inp", "out"
 };
@@ -203,9 +223,14 @@ static string truncatePathComponent( string name, bool preserveExt ) {
 	size_t truncat = safeTruncat( name.c_str(), maxPathComponent );
 	return name.subString(0, truncat);
 }
+#endif // _WINDOWS
 
-#endif
-static string trailingSanity(string name, bool preserveExt) {
+static string trailingSanity(string name, bool preserveExt, const char * lstIllegal) {
+
+	const auto isIllegalTrailingChar = [lstIllegal](char c) {
+		return strchr(lstIllegal, c) != nullptr;
+	};
+
 	t_size end = name.length();
 	if (preserveExt) {
 		size_t offset = pfc::string_find_last(name.c_str(), '.');
@@ -226,7 +251,7 @@ static string trailingSanity(string name, bool preserveExt) {
 	}
 	return name;
 }
-string validateFileName(string name, bool allowWC, bool preserveExt) {
+string validateFileName(string name, bool allowWC, bool preserveExt, charReplace_t replaceIllegalChar) {
 	if (!allowWC) { // special fix for filenames that consist only of question marks
 		size_t end = name.length();
 		if (preserveExt) {
@@ -241,13 +266,18 @@ string validateFileName(string name, bool allowWC, bool preserveExt) {
 			name = string("[unnamed]") + name.subString(end);
 		}
 	}
-#ifdef _WINDOWS
 	if (name.length() > 0 && !allowWC) {
-		name = trailingSanity(name, preserveExt);
+		const char * lstIllegal = " .?";
+
+		// Special hack... don't drop trailing question marks if Unicode replacement is in use
+		const char * q = replaceIllegalChar('?');
+		if (strlen(q) > 1) lstIllegal = " .";
+
+		name = trailingSanity(name, preserveExt, lstIllegal);
 	}
+	name = replaceIllegalNameChars(name, allowWC, replaceIllegalChar);
 
-	name = replaceIllegalNameChars(name, allowWC);
-
+#ifdef _WINDOWS
 	name = truncatePathComponent(name, preserveExt);
 	
 	for( unsigned w = 0; w < _countof(specialIllegalNames); ++w ) {
@@ -256,12 +286,10 @@ string validateFileName(string name, bool allowWC, bool preserveExt) {
 			break;
 		}
 	}
+#endif
 
 	if (name.isEmpty()) name = "_";
 	return name;
-#else
-	return replaceIllegalNameChars(name);
-#endif
 }
 
-}}}
+}}} // namespaces

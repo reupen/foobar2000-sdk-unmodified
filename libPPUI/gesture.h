@@ -204,8 +204,6 @@ GetGestureConfig(
 
 
 
-#endif
-
 typedef BOOL
 (WINAPI *pGetGestureInfo_t)(
 	__in HGESTUREINFO hGestureInfo,
@@ -228,7 +226,7 @@ class CGestureAPI {
 public:
 	CGestureAPI() {
 		HMODULE dll = GetModuleHandle(_T("user32.dll"));
-		
+
 		Bind(GetGestureInfo, dll, "GetGestureInfo");
 		Bind(CloseGestureInfoHandle, dll, "CloseGestureInfoHandle");
 		Bind(SetGestureConfig, dll, "SetGestureConfig");
@@ -243,6 +241,24 @@ public:
 	pSetGestureConfig_t SetGestureConfig;
 private:
 	template<typename func_t> static void Bind(func_t & f, HMODULE dll, const char * name) {
-		f = reinterpret_cast<func_t>( GetProcAddress(dll, name) );
+		f = reinterpret_cast<func_t>(GetProcAddress(dll, name));
 	}
 };
+#else
+
+class CGestureAPI {
+public:
+	inline static bool IsAvailable() { return true; }
+	inline static BOOL GetGestureInfo(HGESTUREINFO hGestureInfo, PGESTUREINFO pGestureInfo) {
+		return ::GetGestureInfo(hGestureInfo, pGestureInfo);
+	}
+	inline static BOOL CloseGestureInfoHandle(HGESTUREINFO hGestureInfo) {
+		return ::CloseGestureInfoHandle(hGestureInfo);
+	}
+
+	inline static BOOL SetGestureConfig(HWND hwnd, DWORD dwReserved, UINT cIDs, PGESTURECONFIG pGestureConfig, UINT cbSize) {
+		return ::SetGestureConfig(hwnd, dwReserved, cIDs, pGestureConfig, cbSize);
+	}
+};
+#endif
+

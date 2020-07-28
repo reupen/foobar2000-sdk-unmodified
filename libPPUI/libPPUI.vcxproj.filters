@@ -161,6 +161,12 @@
     <ClInclude Include="CListControl-Cell.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="gdiplus-helpers-webp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="commandline_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -230,6 +236,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CListControl-Cells.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="commandline_parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InPlaceCombo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -20,6 +20,7 @@ public:
 		MSG_WM_SETCURSOR(OnSetCursor);
 		MSG_WM_MOUSEMOVE(OnMouseMove)
 		MSG_WM_DESTROY(OnDestroy)
+		MSG_WM_ENABLE(OnEnable)
 		CHAIN_MSG_MAP(TParent)
 	END_MSG_MAP()
 
@@ -152,6 +153,7 @@ protected:
 	virtual CRect CellHotRect( size_t item, size_t subItem, cellType_t ct, CRect rcCell );
 	CRect CellHotRect( size_t item, size_t subItem, cellType_t ct );
 	virtual double CellTextScale(size_t item, size_t subItem) { return 1; }
+	virtual bool IsSubItemGrayed(size_t item, size_t subItem) { return !this->IsWindowEnabled(); }
 
 	// HDF_* constants for this column, override when not using list header control. Used to control text alignment.
 	virtual DWORD GetColumnFormat(t_size which) const;
@@ -168,6 +170,7 @@ protected:
 
 	void ReloadData() override;
 private:
+	void OnEnable(BOOL) { Invalidate(); }
 	HBRUSH OnCtlColorStatic(CDCHandle dc, CStatic wndStatic);
 	void ProcessColumnsChange() { OnColumnsChanged();}
 	LRESULT OnSizePassThru(UINT,WPARAM,LPARAM);

@@ -203,7 +203,8 @@ namespace pfc {
 		inline t_size length() const {return get_length();}
 		
 		inline void reset() {truncate(0);}
-		
+		inline void clear() {truncate(0);}
+
 		inline bool is_empty() const {return *get_ptr()==0;}
 		
 		void skip_trailing_chars( const char * lstChars );
@@ -718,9 +719,11 @@ namespace pfc {
 
 	class format_file_size_short : public string_formatter {
 	public:
-		format_file_size_short(t_uint64 size);
+		format_file_size_short(t_uint64 size) { format(size); }
+		format_file_size_short(t_uint64 size, uint64_t * usedScale) { format(size); *usedScale = m_scale; }
 		t_uint64 get_used_scale() const {return m_scale;}
 	private:
+		void format(uint64_t size);
 		t_uint64 m_scale;
 	};
 

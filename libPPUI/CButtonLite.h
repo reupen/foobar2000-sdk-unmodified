@@ -3,6 +3,7 @@
 #include <functional>
 #include <vsstyle.h>
 #include "WTL-PP.h"
+#include "win32_op.h"
 
 typedef CWinTraits<WS_CHILD|WS_TABSTOP,0> CButtonLiteTraits;
 
@@ -30,22 +31,24 @@ public:
 	unsigned Measure() {
 		auto font = myGetFont();
 		LOGFONT lf;
-		font.GetLogFont( lf );
+		WIN32_OP_D(font.GetLogFont(lf));
 		MakeBoldFont( lf );
 		CFont bold;
-		bold.CreateFontIndirect(&lf);
+		WIN32_OP_D(bold.CreateFontIndirect(&lf));
 		CWindowDC dc(*this);
 		auto oldFont = dc.SelectFont( bold );
 		CSize size (0,0);
-		CSize sizeSpace (0,0);
 
-
-		dc.GetTextExtent(m_textDrawMe, m_textDrawMe.GetLength(), &size);
-		dc.GetTextExtent(L" ", 1, &sizeSpace);
+		{
+			CString measure;
+			measure = L"#";
+			measure += m_textDrawMe;
+			WIN32_OP_D(dc.GetTextExtent(measure, measure.GetLength(), &size));
+		}
 
 		dc.SelectFont( oldFont );
 
-		return size.cx + sizeSpace.cx;
+		return size.cx;
 	}
 	std::function< void (HWND) > TabCycleHandler;
 	std::function< HBRUSH (CDCHandle) > CtlColorHandler;
@@ -219,8 +222,9 @@ private:
 				return false;
 			}
 			if ( cMsg == WM_LBUTTONUP ) {
-				if ( m_pressed ) OnClicked();
+				bool wasPressed = m_pressed;
 				TogglePressed(false);
+				if ( wasPressed ) OnClicked();
 				return false;
 			}
 			CRect rcClient; 

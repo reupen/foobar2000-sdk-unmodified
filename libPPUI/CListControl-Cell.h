@@ -8,6 +8,7 @@ public:
 		cellState_none = 0,
 		cellState_hot = 1 << 0,
 		cellState_pressed = 1 << 1,
+		cellState_disabled = 1 << 2,
 	};
 
 	struct DrawContentArg_t {

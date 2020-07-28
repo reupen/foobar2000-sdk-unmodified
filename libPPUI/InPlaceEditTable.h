@@ -33,6 +33,13 @@ namespace InPlaceEdit {
 		};
 		virtual autoComplete_t TableEdit_GetAutoCompleteEx( size_t item, size_t sub );
 
+		struct combo_t {
+			unsigned iDefault = 0;
+			pfc::string_list_impl strings;
+		};
+
+		virtual combo_t TableEdit_GetCombo(size_t item, size_t sub);
+
 		void TableEdit_Start(t_size item, t_size subItem);
 		void TableEdit_Abort(bool forwardContent);
 		bool TableEdit_IsActive() const { return !!m_taskKill; }
@@ -53,6 +60,7 @@ namespace InPlaceEdit {
 		t_size m_editItem, m_editSubItem;
 		t_uint32 m_editFlags;
 		pfc::rcptr_t<pfc::string8> m_editData;
+		std::shared_ptr< combo_t > m_editDataCombo;
 
 		std::shared_ptr<bool> m_taskKill;
 

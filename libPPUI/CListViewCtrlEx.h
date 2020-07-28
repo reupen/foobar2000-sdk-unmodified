@@ -17,6 +17,7 @@ public:
 	void SetItemText8(unsigned item, unsigned subItem, const char * str );
 
 	void AutoSizeColumn( int iCol ) { SetColumnWidth(iCol, LVSCW_AUTOSIZE) ;}
+	int AddGroup(int iGroupID, const wchar_t * header);
 };
 
 // BOOL HandleLVKeyDownMod()

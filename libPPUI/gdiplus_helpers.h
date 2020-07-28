@@ -23,18 +23,17 @@ public:
 	~GdiplusScope() {
 		Gdiplus::GdiplusShutdown(m_token);
 	}
-
 	static void Once() {
-		static bool done = false;
-		if ( ! done ) {
-			ULONG_PTR token = 0;
-			Gdiplus::GdiplusStartupInput input;
-			Gdiplus::GdiplusStartupOutput output;
-			GdiplusErrorHandler() << Gdiplus::GdiplusStartup(&token, &input, &output);
-			done = true;
-		}
+		static bool done = _Once();
 	}
 private:
+	static bool _Once() {
+		ULONG_PTR token = 0;
+		Gdiplus::GdiplusStartupInput input;
+		Gdiplus::GdiplusStartupOutput output;
+		GdiplusErrorHandler() << Gdiplus::GdiplusStartup(&token, &input, &output);
+		return true;
+	}
 	GdiplusScope( const GdiplusScope & ) = delete;
 	void operator=( const GdiplusScope & ) = delete;
 
@@ -76,7 +75,8 @@ static Gdiplus::Image * GdiplusImageFromMem(const void * ptr, size_t bytes) {
 	pfc::ptrholder_t<Image> source;
 
 	{
-		pfc::com_ptr_t<IStream> stream = SHCreateMemStream((const BYTE*)ptr, pfc::downcast_guarded<UINT>(bytes));
+		pfc::com_ptr_t<IStream> stream;
+		stream.attach( SHCreateMemStream((const BYTE*)ptr, pfc::downcast_guarded<UINT>(bytes)) );
 		if (stream.is_empty()) throw std::bad_alloc();
 		source = new Image(stream.get_ptr());
 	}

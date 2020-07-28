@@ -153,7 +153,10 @@ LRESULT CListControlTruncationTooltipImpl::OnHover(UINT,WPARAM wp,LPARAM lp,BOOL
 	pfc::string8 text;
 	if ( this->GetTooltipData(pt, text, rc, font) ) {
 		this->m_tooltipFont = font;
-		TooltipActivateAbs( text, rc );
+		// Gets stuck if the text is very long!
+		if (text.length() < 4096) {
+			TooltipActivateAbs(text, rc);
+		}
 	}
 	return 0;
 }
