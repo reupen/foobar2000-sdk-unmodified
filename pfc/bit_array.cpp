@@ -95,7 +95,7 @@ namespace pfc {
 		if (count==0) return start;
 		else if (count<0) {
 			size_t idx;
-			if (!_findNearestDown( start, idx ) || m_content[idx] < start+count) return start + count;
+			if (!_findNearestDown( start, idx ) || (t_ssize)m_content[idx] < (t_ssize)start+count) return start + count;
 			return m_content[idx];
 		} else { // count > 0
 			size_t idx;

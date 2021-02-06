@@ -15,6 +15,7 @@ public:
 #endif
 	}
 	inline void destroy() throw() {DeleteCriticalSection(&sec);}
+	inline bool tryEnter() throw() { return !!TryEnterCriticalSection(&sec); }
 private:
 	_critical_section_base(const _critical_section_base&);
 	void operator=(const _critical_section_base&);
@@ -62,32 +63,6 @@ namespace pfc {
 
 // Read write lock - Vista-and-newer friendly lock that allows concurrent reads from a resource that permits such
 // Warning, non-recursion proof
-#if _WIN32_WINNT < 0x600
-
-// Inefficient fallback implementation for pre Vista OSes
-class readWriteLock {
-public:
-	readWriteLock() {}
-	void enterRead() {
-		m_obj.enter();
-	}
-	void enterWrite() {
-		m_obj.enter();
-	}
-	void leaveRead() {
-		m_obj.leave();
-	}
-	void leaveWrite() {
-		m_obj.leave();
-	}
-private:
-	critical_section m_obj;
-
-	readWriteLock( const readWriteLock & ) = delete;
-	void operator=( const readWriteLock & ) = delete;
-};
-
-#else
 class readWriteLock {
 public:
 	readWriteLock() : theLock() {
@@ -112,7 +87,6 @@ private:
 
 	SRWLOCK theLock;
 };
-#endif
 
 class _readWriteLock_scope_read {
 public:

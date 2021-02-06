@@ -1352,4 +1352,16 @@ void string_base::fix_dir_separator(char c) {
 		}
 		return ret;
 	}
+
+	string8 stringToUpper(const char * str, size_t len) {
+		string8 ret;
+		stringToUpperAppend(ret, str, len);
+		return ret;
+	}
+	string8 stringToLower(const char * str, size_t len) {
+		string8 ret;
+		stringToLowerAppend(ret, str, len);
+		return ret;
+	}
+
 } //namespace pfc

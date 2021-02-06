@@ -1106,4 +1106,7 @@ namespace pfc {
 	char * strDup(const char * src); // POSIX strdup() clone, prevent MSVC complaining
 
 	string8 lineEndingsToWin( const char * str );
+
+	string8 stringToUpper( const char * str, size_t len = SIZE_MAX );
+	string8 stringToLower( const char * str, size_t len = SIZE_MAX );
 }

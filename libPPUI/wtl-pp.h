@@ -178,27 +178,27 @@ private:
 	}
 	void OnChar(UINT nChar, UINT, UINT nFlags) {
 		if (m_suppressChar != 0) {
-			if (m_suppressChar < 32) {
-				if (nChar == m_suppressChar) return;
-			} else {
-				UINT code = nFlags & 0xFF;
-				if (code == m_suppressChar) return;
-			}
+			if (nChar == m_suppressChar) return;
+		}
+		if (m_suppressScanCode != 0) {
+			UINT code = nFlags & 0xFF;
+			if (code == m_suppressScanCode) return;
 		}
 		SetMsgHandled(FALSE);
 	}
 	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
 		m_suppressChar = 0;
+		m_suppressScanCode = 0;
 		if (HandleCtrlA) {
 			if (nChar == 'A') {
 				if (GetHotkeyModifierFlags() == MOD_CONTROL) {
-					m_suppressChar = nFlags & 0xFF;
+					m_suppressScanCode = nFlags & 0xFF;
 					this->SetSelAll(); return;
 				}
 			}
 			if ( nChar == VK_BACK ) {
 				if (GetHotkeyModifierFlags() == MOD_CONTROL) {
-					m_suppressChar = nFlags & 0xFF;
+					m_suppressScanCode = nFlags & 0xFF;
 					DeleteLastWord( *this ) ; return;
 				}
 			}
@@ -242,7 +242,7 @@ private:
 			}
 		}
 	}
-	UINT m_suppressChar = 0;
+	UINT m_suppressChar = 0, m_suppressScanCode = 0;
 	CMessageMap * const m_hookMM;
 	const int m_hookMMID;
 };
