@@ -122,6 +122,9 @@ namespace pfc {
 
 		//deprecated
 		inline void set(T * p_ptr) {attach(p_ptr);}
+
+		ptrholder_t(t_self&& other) { m_ptr = other.detach(); }
+		const t_self& operator=(t_self&& other) { attach(other.detach()); return this; }
 	private:
 		ptrholder_t(const t_self &) {throw pfc::exception_not_implemented();}
 		const t_self & operator=(const t_self & ) {throw pfc::exception_not_implemented();}

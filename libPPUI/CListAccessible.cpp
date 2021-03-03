@@ -612,7 +612,7 @@ HRESULT IAccessible_CListControl::accNavigate(long navDir, VARIANT varStart, VAR
 	if (m_owner.IsEmpty()) return E_FAIL;
 	VariantClear(pvarEndUpAt);
 	pvarEndUpAt->vt = VT_EMPTY;
-	if (varStart.vt = VT_EMPTY || varStart.lVal == CHILDID_SELF)
+	if (varStart.vt == VT_EMPTY || varStart.lVal == CHILDID_SELF)
 	{
 		switch (navDir)
 		{

@@ -39,7 +39,6 @@ HANDLE CPowerRequestAPI::PowerCreateRequestNamed( const wchar_t * str ) {
 }
 
 CPowerRequest::CPowerRequest(const wchar_t * Reason) : m_Request(INVALID_HANDLE_VALUE), m_bSystem(), m_bDisplay() {
-	HMODULE kernel32 = GetModuleHandle(_T("kernel32.dll"));
 	if (m_API.IsValid()) {
 		winapi_substitute::REASON_CONTEXT ctx = {POWER_REQUEST_CONTEXT_VERSION, POWER_REQUEST_CONTEXT_SIMPLE_STRING};
 		ctx.Reason.SimpleReasonString = const_cast<wchar_t*>(Reason);

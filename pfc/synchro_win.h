@@ -32,8 +32,6 @@ public:
 
 // Regular critical section, intended for any lifetime scopes
 class critical_section : public _critical_section_base {
-private:
-	CRITICAL_SECTION sec;
 public:
 	critical_section() {create();}
 	~critical_section() {destroy();}

@@ -456,8 +456,8 @@ void CListControlWithSelectionBase::ToggleSelectedItems() {
 }
 
 LRESULT CListControlWithSelectionBase::OnTimer(UINT,WPARAM p_wp,LPARAM,BOOL& bHandled) {
-	switch(p_wp) {
-	case KSelectionTimerID:
+	switch((DWORD)p_wp) {
+	case (DWORD)KSelectionTimerID:
 		if (m_selectDragMode) {
 			CPoint pt(GetCursorPos()); ScreenToClient(&pt);
 			const CRect client = GetClientRectHook();
