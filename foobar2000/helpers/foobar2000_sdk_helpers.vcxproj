@@ -13,20 +13,21 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{EE47764E-A202-4F85-A767-ABDAB4AFF35F}</ProjectGuid>
     <RootNamespace>foobar2000_sdk_helpers</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -173,6 +174,7 @@
     <ClInclude Include="advconfig_runtime.h" />
     <ClInclude Include="album_art_helpers.h" />
     <ClInclude Include="atl-misc.h" />
+    <ClInclude Include="audio_render_float.h" />
     <ClInclude Include="AutoComplete.h" />
     <ClInclude Include="BumpableElem.h" />
     <ClInclude Include="CDialogResizeHelper.h" />

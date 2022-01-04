@@ -1,4 +1,5 @@
-#include "pfc.h"
+#include "pfc-lite.h"
+#include "string_base.h"
 
 namespace pfc {
 //utf8 stuff

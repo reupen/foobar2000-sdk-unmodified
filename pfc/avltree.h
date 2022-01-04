@@ -1,5 +1,7 @@
 #pragma once
 
+#include "iterators.h"
+
 namespace pfc {
 
 	template<typename t_storage>
@@ -77,6 +79,8 @@ namespace pfc {
 		typedef avltree_t<t_storage,t_comparator> t_self;
 		typedef pfc::const_iterator<t_storage> const_iterator;
 		typedef pfc::iterator<t_storage> iterator;
+		typedef pfc::forward_iterator<t_storage> forward_iterator;
+		typedef pfc::forward_const_iterator<t_storage> forward_const_iterator;
 		typedef t_storage t_item;
 	private:
 		typedef _avltree_node<t_storage> t_node;
@@ -172,7 +176,7 @@ namespace pfc {
 		}
 
 		template<typename t_nodewalk,typename t_callback>
-		static void __enum_items_recur(t_nodewalk * p_node,t_callback & p_callback) {
+		static void __enum_items_recur(t_nodewalk * p_node,t_callback && p_callback) {
 			if (is_ptr_valid(p_node)) {
 				__enum_items_recur<t_nodewalk>(p_node->m_left.get_ptr(),p_callback);
 				p_callback (p_node->m_content);
@@ -286,6 +290,7 @@ namespace pfc {
 		}
 
 		static void selftest(t_nodeptr const& p_node) {
+			(void)p_node;
 	#if 0 //def _DEBUG//SLOW!
 			if (is_ptr_valid(p_node)) {
 				selftest(p_node->m_left);
@@ -471,7 +476,7 @@ namespace pfc {
 		}
 
 		template<typename t_callback>
-		void enumerate(t_callback & p_callback) const {
+		void enumerate(t_callback && p_callback) const {
 			__enum_items_recur<const t_node>(m_root.get_ptr(),p_callback);
 		}
 
@@ -498,15 +503,18 @@ namespace pfc {
 		
 		
 		
-		const_iterator first() const throw() {return _firstlast(false);}
-		const_iterator last() const throw() {return _firstlast(true);}
+		const_iterator first() const noexcept {return _firstlast(false);}
+		const_iterator last() const noexcept {return _firstlast(true);}
 		//! Unsafe! Caller must not modify items in a way that changes sort order!
 		iterator _first_var() { return _firstlast(false); }
 		//! Unsafe! Caller must not modify items in a way that changes sort order!
 		iterator _last_var() { return _firstlast(true); }
 
-		const_iterator cfirst() const throw() {return _firstlast(false);}
-		const_iterator clast() const throw() {return _firstlast(true);}
+		const_iterator cfirst() const noexcept {return _firstlast(false);}
+		const_iterator clast() const noexcept {return _firstlast(true);}
+
+		forward_const_iterator begin() const noexcept { return first(); }
+		forward_const_iterator end() const noexcept { return forward_const_iterator(); }
 
 		template<typename t_param> bool get_first(t_param & p_item) const throw() {
 			const_iterator iter = first();
@@ -535,11 +543,11 @@ namespace pfc {
 				node->unlink();
 			}
 		}
-		t_node* _firstlast(bool which) const throw() {
-			if (m_root.is_empty()) return NULL;
+		t_node* _firstlast(bool which) const noexcept {
+			if (m_root.is_empty()) return nullptr;
 			for(t_node * walk = m_root.get_ptr(); ; ) {
 				t_node * next = walk->child(which);
-				if (next == NULL) return walk;
+				if (next == nullptr) return walk;
 				PFC_ASSERT( next->m_parent == walk );
 				walk = next;
 			}

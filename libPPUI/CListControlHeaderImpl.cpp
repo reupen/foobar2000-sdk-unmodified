@@ -162,7 +162,11 @@ bool CListControlHeaderImpl::OnClickedSpecial(DWORD status, CPoint pt) {
 	if (!rcHot.PtInRect( pt )) return false;
 
 	SetPressedItem(item, subItem);
-	SetCaptureEx([=](UINT, DWORD newStatus, CPoint pt) {
+	SetCaptureEx([=](UINT msg, DWORD newStatus, CPoint pt) {
+
+		if (msg == WM_MOUSELEAVE) {
+			ClearPressedItem(); return false;
+		}
 
 		{
 			CRect rc = this->GetClientRectHook();
@@ -233,7 +237,7 @@ std::vector<int> CListControlHeaderImpl::GetColumnOrderArray() const {
 
 void CListControlHeaderImpl::RenderItemText(t_size item,const CRect & itemRect,const CRect & updateRect,CDCHandle dc, bool allowColors) {
 	
-	t_uint32 xWalk = itemRect.left;
+	int xWalk = itemRect.left;
 	CRect subItemRect(itemRect);
 	auto order = GetColumnOrderArray();
 	const size_t cCount = order.size();
@@ -957,9 +961,13 @@ bool CListControlHeaderImpl::ToggleSelectedItemsHook(const pfc::bit_array & mask
 
 void CListControlHeaderImpl::OnSubItemClicked(t_size item, t_size subItem, CPoint pt) {
 	auto ct = GetCellType(item, subItem);
-	if ( ct != nullptr && ct->IsToggle() ) {
-		if ( ct->HotRect(GetSubItemRect(item, subItem)).PtInRect(pt) ) {
-			this->SetCellCheckState( item, subItem, ! GetCellCheckState( item, subItem ) );
+	if (ct != nullptr) {
+		if (ct->IsToggle()) {
+			if (ct->HotRect(GetSubItemRect(item, subItem)).PtInRect(pt)) {
+				this->SetCellCheckState(item, subItem, !GetCellCheckState(item, subItem));
+			}
+		} else if (ct->ClickToEdit()) {
+			this->RequestEditItem(item, subItem);
 		}
 	}
 }
@@ -999,6 +1007,11 @@ void CListControlHeaderImpl::OnMouseMove(UINT nFlags, CPoint pt) {
 					}
 					SetHotItem(item, subItem);
 					SetCaptureEx([=](UINT msg, DWORD newStatus, CPoint pt) {
+						if (msg == WM_MOUSELEAVE) {
+							this->ClearHotItem();
+							return false;
+						}
+
 						if ((newStatus & maskButtons) != 0 || msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL ) {
 							// A button has been pressed or wheel has been moved
 							this->ClearHotItem();
@@ -1075,4 +1088,8 @@ void CListControlHeaderImpl::ReloadData() {
 	if ( this->HaveAutoWidthContentColumns( ) ) {
 		this->ColumnWidthFix();
 	}
+}
+
+void CListControlHeaderImpl::RequestEditItem(size_t item, size_t subItem) {
+	PFC_ASSERT(!"Please enable CListControl_EditImpl");
 }

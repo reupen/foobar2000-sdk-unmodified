@@ -52,6 +52,7 @@ public:
 
 	BEGIN_MSG_MAP_EX(CListControlImpl)
 		MESSAGE_RANGE_HANDLER_EX(WM_MOUSEFIRST, WM_MOUSELAST, MousePassThru);
+		MSG_WM_MOUSELEAVE(OnMouseLeave)
 		MESSAGE_HANDLER_EX(MSG_EXEC_DEFERRED, OnExecDeferred);
 		MESSAGE_HANDLER(WM_PAINT,OnPaint);
 		MSG_WM_PRINTCLIENT(OnPrintClient);
@@ -145,7 +146,11 @@ public:
 	virtual void RenderBackground( CDCHandle dc, CRect const & rc );
 
 	virtual void OnViewOriginChange(CPoint p_delta) {}
-	virtual void RenderOverlay(const CRect & p_updaterect,CDCHandle p_dc) {}
+
+	// RenderOverlay2 takes rect in client coords, not absolute
+	// p_dc operates on client coords also
+	virtual void RenderOverlay2(const CRect & p_updaterect,CDCHandle p_dc) {}
+
 	virtual bool FixedOverlayPresent() {return false;}
 
 	virtual CRect GetClientRectHook() const;
@@ -195,9 +200,6 @@ public:
 	virtual bool UserEnabledSmoothScroll() const;
 	virtual bool ToggleSelectedItemsHook(pfc::bit_array const & mask) { return false; }
 
-	void SetCaptureEx(CaptureProc_t proc);
-	void SetCaptureMsgHandled(BOOL v) { this->SetMsgHandled(v); }
-
 	SIZE GetDPI() const { return this->m_dpi;}
 
 	// Should this control take enter key in dialogs or not?
@@ -223,6 +225,13 @@ public:
 	static COLORREF BlendGridColor( COLORREF bk, COLORREF tx );
 	static COLORREF BlendGridColor( COLORREF bk );
 	COLORREF GridColor();
+
+
+	// SetCaptureEx() is for INTERNAL USE ONLY and not a part of the API
+	// Do not reuse
+	void SetCaptureEx(CaptureProc_t proc);
+	void ReleaseCaptureEx();
+	void SetCaptureMsgHandled(BOOL v) { this->SetMsgHandled(v); }
 
 private:
 	void RenderRect(const CRect & p_rect,CDCHandle p_dc);
@@ -265,6 +274,9 @@ protected:
 	pfc::map_t<pfc::string8, CTheme, pfc::comparator_strcmp> m_themeCache;
 	CTheme & themeFor( const char * what );
 	CTheme & theme() { return themeFor("LISTVIEW");}
+
+	void TrackMouseLeave();
+	void OnMouseLeave();
 
 	const SIZE m_dpi = QueryScreenDPIEx();
 	CGestureAPI m_gestureAPI;

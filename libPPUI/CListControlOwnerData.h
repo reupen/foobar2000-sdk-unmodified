@@ -148,7 +148,9 @@ protected:
 	}
 
 	t_uint32 TableEdit_GetEditFlags(t_size item, t_size subItem) const override {
-		return m_host->listGetEditFlags( this, item, subItem );
+		auto ret = __super::TableEdit_GetEditFlags(item, subItem);
+		ret |= m_host->listGetEditFlags( this, item, subItem );
+		return ret;
 	}
 
 	combo_t TableEdit_GetCombo(size_t item, size_t subItem) override {

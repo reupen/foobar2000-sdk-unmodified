@@ -1,6 +1,10 @@
 #pragma once
 #include <math.h>
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 #define audio_sample_size 32
 
 #if audio_sample_size == 32
@@ -33,15 +37,6 @@ namespace pfc {
 		static void remove_denormals(audio_sample * p_buffer, t_size p_count);
 		static void add_offset(audio_sample * p_buffer, audio_sample p_delta, t_size p_count);
 
-		static inline t_uint64 time_to_samples(double p_time, t_uint32 p_sample_rate) {
-			return (t_uint64)floor((double)p_sample_rate * p_time + 0.5);
-		}
-
-		static inline double samples_to_time(t_uint64 p_samples, t_uint32 p_sample_rate) {
-			PFC_ASSERT(p_sample_rate > 0);
-			return (double)p_samples / (double)p_sample_rate;
-		}
-
 #if defined(_MSC_VER) && defined(_M_IX86)
 		inline static t_int64 rint64(audio_sample val) {
 			t_int64 rv;
@@ -67,15 +62,24 @@ namespace pfc {
 #endif
 
 #elif defined(_MSC_VER) && defined(_M_X64)
-		inline static t_int64 rint64(audio_sample val) { return (t_int64)floor(val + 0.5); }
+		inline static t_int64 rint64(audio_sample val) { return (t_int64)llroundf(val); }
 		static inline t_int32 rint32(float p_val) {
 			return (t_int32)_mm_cvtss_si32(_mm_load_ss(&p_val));
 		}
 #else
-		inline static t_int64 rint64(audio_sample val) { return (t_int64)floor(val + 0.5); }
-		inline static t_int32 rint32(audio_sample val) { return (t_int32)floor(val + 0.5); }
+		inline static t_int64 rint64(audio_sample val) { return (t_int64)llroundf(val); }
+		inline static t_int32 rint32(audio_sample val) { return (t_int32)lroundf(val); }
 #endif
 
+
+		static inline t_uint64 time_to_samples(double p_time, t_uint32 p_sample_rate) {
+			return (t_uint64)pfc::rint64((double)p_sample_rate * p_time);
+		}
+
+		static inline double samples_to_time(t_uint64 p_samples, t_uint32 p_sample_rate) {
+			PFC_ASSERT(p_sample_rate > 0);
+			return (double)p_samples / (double)p_sample_rate;
+		}
 
 		static inline audio_sample gain_to_scale(double p_gain) { return (audio_sample)pow(10.0, p_gain / 20.0); }
 		static inline double scale_to_gain(double scale) { return 20.0*log10(scale); }

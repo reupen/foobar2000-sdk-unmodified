@@ -1,8 +1,12 @@
-#include "pfc.h"
-
-#include "pp-winapi.h"
+#include "pfc-lite.h"
 
 #ifdef _WIN32
+#include "win-objects.h"
+#include "array.h"
+#include "pp-winapi.h"
+#include "string_conv.h"
+#include "string_base.h"
+#include "debug.h"
 
 #include "pfc-fb2k-hooks.h"
 
@@ -40,6 +44,7 @@ BOOL winFormatSystemErrorMessageImpl(pfc::string_base & p_out,DWORD p_code) {
 		return TRUE;
 	default:
 		{
+#ifdef PFC_WINDOWS_DESKTOP_APP
 			TCHAR temp[512];
 			if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,0,p_code,0,temp,_countof(temp),0) == 0) return FALSE;
 			for(t_size n=0;n<_countof(temp);n++) {
@@ -52,8 +57,10 @@ BOOL winFormatSystemErrorMessageImpl(pfc::string_base & p_out,DWORD p_code) {
 			}
 			p_out = stringcvt::string_utf8_from_os(temp,_countof(temp));
 			return TRUE;
+#else
+			return FALSE;
+#endif
 		}
-		break;
 	}
 }
 void winPrefixPath(pfc::string_base & out, const char * p_path) {
@@ -99,24 +106,30 @@ string8 winUnPrefixPath(const char * in) {
 
 } // namespace pfc
 
-format_win32_error::format_win32_error(DWORD p_code) {
+pfc::string8 format_win32_error(DWORD p_code) {
 	pfc::LastErrorRevertScope revert;
-	if (p_code == 0) m_buffer = "Undefined error";
-	else if (!pfc::winFormatSystemErrorMessage(m_buffer,p_code)) m_buffer << "Unknown error code (" << (unsigned)p_code << ")";
+	pfc::string8 buffer;
+	if (p_code == 0) buffer = "Undefined error";
+	else if (!pfc::winFormatSystemErrorMessage(buffer,p_code)) buffer << "Unknown error code (" << (unsigned)p_code << ")";
+	return buffer;
 }
 
-format_hresult::format_hresult(HRESULT p_code) {
-	if (!pfc::winFormatSystemErrorMessage(m_buffer,(DWORD)p_code)) m_buffer = "Unknown error code";
-	stamp_hex(p_code);
-}
-format_hresult::format_hresult(HRESULT p_code, const char * msgOverride) {
-	m_buffer = msgOverride;
-	stamp_hex(p_code);
+static void format_hresult_stamp_hex(pfc::string8 & buffer, HRESULT p_code) {
+	buffer << " (0x" << pfc::format_hex((t_uint32)p_code, 8) << ")";
 }
 
-void format_hresult::stamp_hex(HRESULT p_code) {
-	m_buffer << " (0x" << pfc::format_hex((t_uint32)p_code, 8) << ")";
+pfc::string8 format_hresult(HRESULT p_code) {
+	pfc::string8 buffer;
+	if (!pfc::winFormatSystemErrorMessage(buffer,(DWORD)p_code)) buffer = "Unknown error code";
+	format_hresult_stamp_hex(buffer, p_code);
+	return buffer;
 }
+pfc::string8 format_hresult(HRESULT p_code, const char * msgOverride) {
+	pfc::string8 buffer = msgOverride;
+	format_hresult_stamp_hex(buffer, p_code);
+	return buffer;
+}
+
 
 #ifdef PFC_WINDOWS_DESKTOP_APP
 
@@ -213,7 +226,7 @@ void CClipboardOpenScope::Close() {
 }
 
 
-CGlobalLockScope::CGlobalLockScope(HGLOBAL p_handle) : m_handle(p_handle), m_ptr(GlobalLock(p_handle)) {
+CGlobalLockScope::CGlobalLockScope(HGLOBAL p_handle) : m_ptr(GlobalLock(p_handle)), m_handle(p_handle) {
 	if (m_ptr == NULL) throw std::bad_alloc();
 }
 CGlobalLockScope::~CGlobalLockScope() {
@@ -383,7 +396,10 @@ namespace pfc {
 #if _WIN32_WINNT >= 0xA00 
 		SetThreadDescription(hThread, desc);
 #else
-		auto proc = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetThreadDescription");
+		auto proc = GetProcAddress(GetModuleHandle(L"KernelBase.dll"), "SetThreadDescription");
+		if (proc == nullptr) {
+			proc = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetThreadDescription");
+		}
 		if (proc != nullptr) {
 			typedef HRESULT(__stdcall * pSetThreadDescription_t)(HANDLE hThread, PCWSTR lpThreadDescription);
 			auto proc2 = reinterpret_cast<pSetThreadDescription_t>(proc);

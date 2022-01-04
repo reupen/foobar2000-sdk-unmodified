@@ -7,6 +7,7 @@ unsigned QueryScreenDPI_X(HWND wnd = NULL);
 unsigned QueryScreenDPI_Y(HWND wnd = NULL);
 
 SIZE QueryScreenDPIEx(HWND wnd = NULL);
+SIZE QueryContextDPI(HDC dc);
 
 void HeaderControl_SetSortIndicator(HWND header, int column, bool isUp);
 

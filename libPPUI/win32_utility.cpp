@@ -2,6 +2,9 @@
 #include "win32_utility.h"
 #include "win32_op.h"
 
+SIZE QueryContextDPI(HDC dc) {
+	return {GetDeviceCaps(dc,LOGPIXELSX), GetDeviceCaps(dc,LOGPIXELSY)};
+}
 unsigned QueryScreenDPI(HWND wnd) {
 	HDC dc = GetDC(wnd);
 	unsigned ret = GetDeviceCaps(dc, LOGPIXELSY);

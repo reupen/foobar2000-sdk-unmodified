@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include <vsstyle.h>
 #include <memory>
-#include "ppresources.h"
 #include "CListControlWithSelection.h"
 #include "PaintUtils.h"
 #include "IDataObjectUtils.h"
@@ -622,16 +621,17 @@ LRESULT CListControlWithSelectionBase::OnCaptureChanged(UINT,WPARAM,LPARAM,BOOL&
 	return 0;
 }
 
-void CListControlWithSelectionBase::RenderOverlay(const CRect & p_updaterect,CDCHandle p_dc)  {
+void CListControlWithSelectionBase::RenderOverlay2(const CRect & p_updaterect,CDCHandle p_dc)  {
 	if (m_selectDragMode && this->AllowRangeSelect() ) {
 		CRect rcSelect(m_selectDragOriginAbs,m_selectDragCurrentAbs);
 		rcSelect.NormalizeRect();
+		rcSelect.OffsetRect(-GetViewOffset());
 		PaintUtils::FocusRect(p_dc,rcSelect);
 	}
-	if (m_dropMark != pfc_infinite) {
-		RenderDropMarkerClipped(p_dc, p_updaterect, m_dropMark, m_dropMarkInside);
+	if (m_dropMark != SIZE_MAX) {
+		RenderDropMarkerClipped2(p_dc, p_updaterect, m_dropMark, m_dropMarkInside);
 	}
-	TParent::RenderOverlay(p_updaterect,p_dc);
+	TParent::RenderOverlay2(p_updaterect,p_dc);
 }
 
 void CListControlWithSelectionBase::SetDropMark(size_t mark, bool inside) {
@@ -767,7 +767,7 @@ void CListControlWithSelectionBase::RenderGroupHeader(int p_group,const CRect & 
 	}
 }
 CRect CListControlWithSelectionBase::DropMarkerUpdateRect(t_size index,bool bInside) const {
-	if (index != ~0) {
+	if (index != SIZE_MAX) {
 		CRect rect;
 		if (bInside) {
 			rect = GetItemRect(index);
@@ -795,31 +795,31 @@ CRect CListControlWithSelectionBase::DropMarkerRect(int offset) const {
 int CListControlWithSelectionBase::DropMarkerOffset(t_size marker) const {
 	return (marker > 0 ? this->GetItemRectAbs(marker-1).bottom : 0) - GetViewOffset().y;
 }
-bool CListControlWithSelectionBase::RenderDropMarkerClipped(CDCHandle dc, const CRect & update, t_size item, bool bInside) {
-	CRect markerRect = DropMarkerUpdateRect(item,bInside); markerRect.OffsetRect( GetViewOffset() );
+bool CListControlWithSelectionBase::RenderDropMarkerClipped2(CDCHandle dc, const CRect & update, t_size item, bool bInside) {
+	CRect markerRect = DropMarkerUpdateRect(item,bInside);
 	CRect affected;
 	if (affected.IntersectRect(markerRect,update)) {
 		DCStateScope state(dc);
 		if (dc.IntersectClipRect(affected)) {
-			RenderDropMarker(dc,item,bInside);
+			RenderDropMarker2(dc,item,bInside);
 			return true;
 		}
 	}
 	return false;
 }
-void CListControlWithSelectionBase::RenderDropMarker(CDCHandle dc, t_size item, bool bInside) {
-	if (item != ~0) {
+void CListControlWithSelectionBase::RenderDropMarker2(CDCHandle dc, t_size item, bool bInside) {
+	if (item != SIZE_MAX) {
 		if (bInside) {
 			CPen pen; MakeDropMarkerPen(pen);
 			SelectObjectScope penScope(dc,pen);
-			const CRect rc = GetItemRectAbs(item);
+			const CRect rc = GetItemRect(item);
 			dc.MoveTo(rc.left,rc.top);
 			dc.LineTo(rc.right,rc.top);
 			dc.LineTo(rc.right,rc.bottom);
 			dc.LineTo(rc.left,rc.bottom);
 			dc.LineTo(rc.left,rc.top);
 		} else {
-			RenderDropMarkerByOffset(DropMarkerOffset(item) + GetViewOffset().y,dc);
+			RenderDropMarkerByOffset2(DropMarkerOffset(item),dc);
 		}
 	}
 }
@@ -834,18 +834,21 @@ void CListControlWithSelectionBase::MakeDropMarkerPen(CPen & out) const {
 	WIN32_OP_D( out.CreatePen(PS_SOLID,3,GetSysColorHook(colorText)) != NULL );
 }
 
-void CListControlWithSelectionBase::RenderDropMarkerByOffset(int offset,CDCHandle p_dc) {
+void CListControlWithSelectionBase::RenderDropMarkerByOffset2(int offset,CDCHandle p_dc) {
 	CPen pen; MakeDropMarkerPen(pen);
 	const int delta = MulDiv(5,m_dpi.cy,96);
 	SelectObjectScope penScope(p_dc,pen);
 	const int width = GetViewAreaWidth();
 	if (width > 0) {
-		p_dc.MoveTo(0,offset);
-		p_dc.LineTo(width-1,offset);
-		p_dc.MoveTo(0,offset-delta);
-		p_dc.LineTo(0,offset+delta);
-		p_dc.MoveTo(width-1,offset-delta);
-		p_dc.LineTo(width-1,offset+delta);
+		const int vx = this->GetViewOffset().x;
+		const int left = -vx;
+		const int right = width - 1 - vx;
+		p_dc.MoveTo(left,offset);
+		p_dc.LineTo(right,offset);
+		p_dc.MoveTo(left,offset-delta);
+		p_dc.LineTo(left,offset+delta);
+		p_dc.MoveTo(right,offset-delta);
+		p_dc.LineTo(right,offset+delta);
 	}
 }
 
@@ -1197,7 +1200,7 @@ size_t CListControlWithSelectionBase::EvalTypeFind() {
 
 	const size_t itemCount = GetItemCount();
 	const size_t colCount = GetColumnCount();
-	pfc::string_formatter temp;
+	pfc::string_formatter temp; temp.prealloc(1024);
 	t_size searchBase = this->GetFocusItem();
 	if (searchBase >= itemCount) searchBase = 0;
 
@@ -1477,15 +1480,17 @@ int CListControlWithSelectionBase::OnCreatePassThru(LPCREATESTRUCT lpCreateStruc
 
 		pfc::com_ptr_t<CDropTargetImpl> target = new CDropTargetImpl();
 
-		std::shared_ptr<bool> showDropMark = std::make_shared<bool>();
+		auto dda = std::make_shared<dragDropAccept_t>();
 
-		target->HookAccept = [this, flags, showDropMark] ( IDataObject * obj ) {
-			*showDropMark = true;
-			if (this->m_ownDDActive) {
+		target->HookAccept = [this, flags, dda] ( IDataObject * obj ) {
+			if (this->m_ownDDActive && (flags & dragDrop_reorder) != 0) {
 				// Do not generate OnDrop for reorderings
-				if (flags & dragDrop_reorder) return (DWORD)DROPEFFECT_MOVE;
+				dda->showDropMark = true;
+				dda->dwEFfect = DROPEFFECT_MOVE;
+			} else {
+				*dda = this->DragDropAccept2(obj);
 			}
-			return this->DragDropAccept(obj, *showDropMark);
+			return dda->dwEFfect;
 		};
 		target->HookDrop = [this, flags] ( IDataObject * obj, CPoint pt ) {
 			this->ClearDropMark();
@@ -1499,11 +1504,20 @@ int CListControlWithSelectionBase::OnCreatePassThru(LPCREATESTRUCT lpCreateStruc
 			this->ClearDropMark();
 		};
 
-		target->Track = [this, showDropMark](CPoint pt) {
-			if ( *showDropMark ) {
+		target->Track = [this, dda](CPoint pt) {
+			if ( dda->showDropMark ) {
 				WIN32_OP_D(this->ScreenToClient(&pt));
 				size_t idx = this->InsertIndexFromPoint(pt);
-				this->SetDropMark(idx, false);
+				if (dda->dropOnItem) {
+					if (idx < this->GetItemCount()) {
+						this->SetDropMark(idx, true);
+					} else {
+						this->ClearDropMark();
+					}
+				} else {
+					this->SetDropMark(idx, false);
+				}
+				
 			} else {
 				this->ClearDropMark();
 			}
@@ -1584,4 +1598,14 @@ void CListControlWithSelectionImpl::OnItemsInserted( size_t at, size_t count, bo
 bool CListControlWithSelectionImpl::SelectAll() {
 	if ( m_selectionSupport != selectionSupportMulti ) return false;
 	return __super::SelectAll();
+}
+
+DWORD CListControlWithSelectionBase::DragDropAccept(IDataObject* obj, bool& showDropMark) { 
+	showDropMark = false; return DROPEFFECT_NONE; 
+}
+
+CListControlWithSelectionBase::dragDropAccept_t CListControlWithSelectionBase::DragDropAccept2(IDataObject* obj) {
+	dragDropAccept_t ret;
+	ret.dwEFfect = this->DragDropAccept(obj, ret.showDropMark);
+	return ret;
 }

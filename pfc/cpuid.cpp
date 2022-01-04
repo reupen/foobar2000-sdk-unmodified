@@ -1,8 +1,12 @@
-#include "pfc.h"
+#include "pfc-lite.h"
+#include "cpuid.h"
 
+
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 #if PFC_HAVE_CPUID
-
 namespace pfc {
 
 	bool query_cpu_feature_set(unsigned p_value) {

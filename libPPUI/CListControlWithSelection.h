@@ -69,15 +69,27 @@ public:
 	};
 
 	virtual uint32_t QueryDragDropTypes() const { return 0; }
-	virtual DWORD DragDropAccept(IDataObject * obj, bool & showDropMark) { return DROPEFFECT_NONE; }
+	struct dragDropAccept_t {
+		DWORD dwEFfect = DROPEFFECT_NONE;
+		//! Show drop mark or not?
+		bool showDropMark = false;
+		//! Drop on item or insert into list?
+		bool dropOnItem = false;
+	};
+	//! Deprecated, use DragDropAccept2()
+	virtual DWORD DragDropAccept(IDataObject* obj, bool& showDropMark);
+	//! Return info on what you can do with this IDataObject.
+	virtual dragDropAccept_t DragDropAccept2(IDataObject*);
 	virtual pfc::com_ptr_t<IDataObject> MakeDataObject();
+	//! Called upon drop
+	//! @param pt Drop point in screen coordinates.
 	virtual void OnDrop(IDataObject * obj, CPoint pt ) {}
 	virtual DWORD DragDropSourceEffects() { return DROPEFFECT_MOVE | DROPEFFECT_COPY;}
 	virtual void DragDropSourceSucceeded( DWORD effect ) {}
 
 	bool GroupFocusActive() const {return GetGroupFocus() >= 0;}
 	
-	void RenderOverlay(const CRect & p_updaterect,CDCHandle p_dc);
+	void RenderOverlay2(const CRect & p_updaterect,CDCHandle p_dc) override;
 
 	bool IsItemFocused(t_size index) const {return GetFocusItem() == index;}
 	bool IsGroupHeaderFocused(int p_id) const {return GetGroupFocus() == p_id;}
@@ -110,9 +122,9 @@ public:
 protected:
 	void ToggleDDScroll(bool p_state);
 	void AbortSelectDragMode() {AbortSelectDragMode(false);}
-	void RenderDropMarkerByOffset(int offset,CDCHandle p_dc);
-	void RenderDropMarker(CDCHandle dc, t_size item, bool bInside);
-	bool RenderDropMarkerClipped(CDCHandle dc, const CRect & update, t_size item, bool bInside);
+	void RenderDropMarkerByOffset2(int offset,CDCHandle p_dc);
+	void RenderDropMarker2(CDCHandle dc, t_size item, bool bInside);
+	bool RenderDropMarkerClipped2(CDCHandle dc, const CRect & update, t_size item, bool bInside);
 	CRect DropMarkerRect(int offset) const;
 	int DropMarkerOffset(t_size marker) const;
 	void AddDropMarkToUpdateRgn(HRGN p_rgn, t_size p_index, bool bInside = false) const;

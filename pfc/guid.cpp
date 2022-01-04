@@ -1,7 +1,12 @@
-#include "pfc.h"
+#include "pfc-lite.h"
+#include "guid.h"
+#include "debug.h" // pfc::crash()
+#include "string_base.h"
 
 #ifdef _WIN32
 #include <Objbase.h>
+#else
+#include "nix-objects.h"
 #endif
 
 /*
@@ -127,9 +132,10 @@ static void print_hex(unsigned val,char * &out,unsigned bytes)
 }
 
 
-print_guid::print_guid(const GUID & p_guid)
+pfc::string8 print_guid(const GUID & p_guid)
 {
-	char * out = m_data;
+    char data[64];
+	char * out = data;
 	print_hex(p_guid.Data1,out,4);
 	*(out++) = '-';
 	print_hex(p_guid.Data2,out,2);
@@ -146,6 +152,7 @@ print_guid::print_guid(const GUID & p_guid)
 	print_hex(p_guid.Data4[6],out,1);
 	print_hex(p_guid.Data4[7],out,1);
 	*out = 0;
+    return data;
 }
 
 
@@ -176,12 +183,14 @@ const GUID pfc::guid_null = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
 
 namespace pfc {
-	format_guid_cpp::format_guid_cpp(const GUID & guid) {
-		*this << "{0x" << pfc::format_hex(guid.Data1,8) << ", 0x" << pfc::format_hex(guid.Data2, 4) << ", 0x" << pfc::format_hex(guid.Data3,4) << ", {0x" << pfc::format_hex(guid.Data4[0],2);
+    pfc::string8 format_guid_cpp(const GUID & guid) {
+        pfc::string8 s;
+		s << "{0x" << pfc::format_hex(guid.Data1,8) << ", 0x" << pfc::format_hex(guid.Data2, 4) << ", 0x" << pfc::format_hex(guid.Data3,4) << ", {0x" << pfc::format_hex(guid.Data4[0],2);
 		for(int n = 1; n < 8; ++n) {
-			*this << ", 0x" << pfc::format_hex(guid.Data4[n],2);
+			s << ", 0x" << pfc::format_hex(guid.Data4[n],2);
 		}
-		*this << "}}";
+		s << "}}";
+        return s;
 	}
 
 	uint64_t halveGUID(const GUID & id) {

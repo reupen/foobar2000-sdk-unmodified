@@ -10,7 +10,8 @@ typedef CWinTraits<WS_CHILD|WS_TABSTOP,0> CButtonLiteTraits;
 class CButtonLite : public CWindowImpl<CButtonLite, CWindow, CButtonLiteTraits > {
 public:
 	BEGIN_MSG_MAP_EX(CButtonLite)
-		MESSAGE_RANGE_HANDLER_EX(WM_MOUSEFIRST, WM_MOUSELAST, MousePassThru);
+		MESSAGE_RANGE_HANDLER_EX(WM_MOUSEFIRST, WM_MOUSELAST, MousePassThru)
+		MSG_WM_MOUSELEAVE(OnMouseLeave)
 		MSG_WM_SETTEXT(OnSetText)
 		MSG_WM_PAINT( OnPaint )
 		MSG_WM_MOUSEMOVE(OnMouseMove)
@@ -62,6 +63,24 @@ public:
 	}
 
 protected:
+	LRESULT MousePassThru(UINT cMsg, WPARAM cFlags, LPARAM lParam) {
+		SetMsgHandled(FALSE);
+		CPoint cPoint(lParam);
+		const DWORD maskButtons = MK_LBUTTON | MK_RBUTTON | MK_MBUTTON | MK_XBUTTON1 | MK_XBUTTON2;
+		if (cMsg == WM_MOUSEWHEEL || cMsg == WM_MOUSEHWHEEL || (cFlags & maskButtons) != 0) {
+			ToggleHot(false);
+		}
+		if (cMsg == WM_MOUSEWHEEL || cMsg == WM_MOUSEHWHEEL) {
+			TogglePressed(false);
+		}
+		if (cMsg == WM_LBUTTONUP) {
+			bool wasPressed = m_pressed;
+			TogglePressed(false);
+			if (wasPressed) OnClicked();
+			SetMsgHandled(TRUE);
+		}
+		return 0;
+	}
 	CFontHandle m_font;
 	void OnSetFont(HFONT font, BOOL bRedraw) {
 		m_font = font; if (bRedraw) Invalidate();
@@ -196,45 +215,14 @@ private:
 	void OnMouseMove(UINT nFlags, CPoint point) {
 		const DWORD maskButtons = MK_LBUTTON | MK_RBUTTON | MK_MBUTTON | MK_XBUTTON1 | MK_XBUTTON2;
 		if ((nFlags & maskButtons) != 0) return;
-		CRect rcClient;
-		if (!GetClientRect(rcClient)) return;
-		if (!rcClient.PtInRect( point ) ) return;
-		ToggleHot( true );
-		SetCaptureEx([=](UINT cMsg, DWORD cFlags, CPoint cPoint) {
-			CRect rcClient; 
-			if (!GetClientRect(rcClient)) return false;
-			if ( cMsg == WM_MOUSEWHEEL || cMsg == WM_MOUSEHWHEEL || (cFlags & maskButtons) != 0 || !rcClient.PtInRect(cPoint) ) {
-				ToggleHot(false);
-				SetMsgHandled( FALSE );
-				return false;
-			}
-			return true;
-		} );
+		ToggleHot(true);
+		TrackMouseLeave();
 	}
 	void OnLButtonDown(UINT nFlags, CPoint point) {
 		const DWORD maskButtons = MK_LBUTTON | MK_RBUTTON | MK_MBUTTON | MK_XBUTTON1 | MK_XBUTTON2;
 		if ( ( nFlags & maskButtons ) != MK_LBUTTON ) return;
 		TogglePressed( true );
-		SetCaptureEx([=] (UINT cMsg, DWORD cFlags, CPoint cPoint) {
-			if (cMsg == WM_MOUSEWHEEL || cMsg == WM_MOUSEHWHEEL) {
-				TogglePressed(false);
-				SetMsgHandled(FALSE);
-				return false;
-			}
-			if ( cMsg == WM_LBUTTONUP ) {
-				bool wasPressed = m_pressed;
-				TogglePressed(false);
-				if ( wasPressed ) OnClicked();
-				return false;
-			}
-			CRect rcClient; 
-			if (!GetClientRect( rcClient )) return false;
-			if ( (cFlags & maskButtons) != (nFlags & maskButtons ) || ! rcClient.PtInRect( cPoint ) ) {
-				TogglePressed(false);
-				SetMsgHandled( FALSE ); return false;
-			}
-			return true;
-		} );
+		TrackMouseLeave();
 	}
 	void TogglePressed( bool bPressed ) {
 		if ( bPressed != m_pressed ) {
@@ -246,26 +234,15 @@ private:
 		Invalidate(); SetMsgHandled(FALSE);
 		return 0;
 	}
-	typedef std::function< bool(UINT, DWORD, CPoint) > CaptureProc_t;
-	void SetCaptureEx( CaptureProc_t proc ) {
-		m_captureProc = proc; SetCapture();
+	void TrackMouseLeave() {
+		TRACKMOUSEEVENT tme = { sizeof(tme) };
+		tme.dwFlags = TME_LEAVE;
+		tme.hwndTrack = m_hWnd;
+		TrackMouseEvent(&tme);
 	}
-	LRESULT MousePassThru(UINT msg, WPARAM wp, LPARAM lp) {
-		auto p = m_captureProc; // create local ref in case something in mid-captureproc clears it
-		if (p) {
-			CPoint pt(lp);
-			if (!p(msg, (DWORD)wp, pt)) {
-				::ReleaseCapture();
-				m_captureProc = nullptr;
-			}
-			return 0;
-		}
-
-		SetMsgHandled(FALSE);
-		return 0;
+	void OnMouseLeave() {
+		ToggleHot(false); TogglePressed(false);
 	}
-
-	CaptureProc_t m_captureProc;
 
 	bool m_pressed = false, m_focused = false, m_hot = false;
 	CString m_textDrawMe;

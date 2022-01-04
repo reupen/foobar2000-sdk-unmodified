@@ -45,13 +45,6 @@ pfc::com_ptr_t<IUnknown> CreateACList(pfc::const_iterator<const char *> valueEnu
 	}
 	return acl;
 }
-pfc::com_ptr_t<IUnknown> CreateACList(pfc::const_iterator<pfc::string> valueEnum) {
-	pfc::com_ptr_t<CEnumString> acl = new CEnumString::TImpl();
-	while (valueEnum.is_valid()) {
-		acl->AddStringU(valueEnum->ptr()); ++valueEnum;
-	}
-	return acl;
-}
 
 pfc::com_ptr_t<IUnknown> CreateACList() {
 	return new CEnumString::TImpl();

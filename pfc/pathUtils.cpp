@@ -1,4 +1,5 @@
-﻿#include "pfc.h"
+﻿#include "pfc-lite.h"
+#include "pathUtils.h"
 
 static_assert(L'Ö' == 0xD6, "Compile as Unicode!!!");
 
@@ -43,7 +44,7 @@ string getParent(string filePath) {
 string combine(string basePath,string fileName) {
 	if (basePath.length() > 0) {
 		if (!isSeparator(basePath.lastChar())) {
-			basePath += getDefaultSeparator();
+			basePath.add_byte( getDefaultSeparator() );
 		}
 		return basePath + fileName;
 	} else {
@@ -282,8 +283,8 @@ string validateFileName(string name, bool allowWC, bool preserveExt, charReplace
 #ifdef _WINDOWS
 	name = truncatePathComponent(name, preserveExt);
 	
-	for( unsigned w = 0; w < _countof(specialIllegalNames); ++w ) {
-		if (pfc::stringEqualsI_ascii( name.c_str(), specialIllegalNames[w] ) ) {
+	for( auto p : specialIllegalNames ) {
+		if (pfc::stringEqualsI_ascii( name.c_str(), p ) ) {
 			name += "-";
 			break;
 		}

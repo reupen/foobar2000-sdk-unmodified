@@ -1,4 +1,7 @@
-#include "pfc.h"
+#include "pfc-lite.h"
+#include "audio_sample.h"
+#include "primitives.h"
+#include "byte_order.h"
 
 namespace pfc {
     audio_sample audio_math::decodeFloat24ptr(const void * sourcePtr) {

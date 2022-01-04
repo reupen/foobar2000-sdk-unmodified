@@ -35,9 +35,6 @@
     <ClInclude Include="CButtonLite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ppresources.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="win32_op.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -167,6 +164,9 @@
     <ClInclude Include="commandline_parser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ppresources.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -203,9 +203,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="IDataObjectUtils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SmartStrStr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="InPlaceEdit.cpp">
@@ -248,13 +245,5 @@
   <ItemGroup>
     <Text Include="libPPUI-license.txt" />
     <Text Include="libPPUI-readme.txt" />
-    <Text Include="IDI_SCROLL.txt">
-      <Filter>Resources</Filter>
-    </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="IDI_SCROLL.ico">
-      <Filter>Resources</Filter>
-    </Image>
   </ItemGroup>
 </Project>

@@ -260,13 +260,22 @@ LRESULT CListControlImpl::OnHWheel(UINT,WPARAM p_wp,LPARAM p_lp,BOOL&) {
 	return 0;
 }
 
-LRESULT CListControlImpl::OnVScroll(UINT,WPARAM p_wp,LPARAM,BOOL&) {
-	int target = HandleScroll(LOWORD(p_wp),m_viewOrigin.y,GetVisibleRectAbs().Height(),GetItemHeight(),GetViewAreaRectAbs().bottom,GetScrollThumbPos(SB_VERT));
+
+// ====== Logitech scroll bug explanation ======
+// With Logitech wheel hscroll, we must use WPARAM position, not GetScrollInfo() value.
+// However this is wrong, we'll get nonsense if scroll range doesn't fit in 16-bit!
+// As a workaround, we use GetScrollInfo() value for vscroll (good)
+// and workaround Logitech bug by using WPARAM position with hscroll (practically impossible to overflow)
+
+LRESULT CListControlImpl::OnVScroll(UINT, WPARAM p_wp, LPARAM, BOOL&) {
+	int thumb = GetScrollThumbPos(SB_VERT); // HIWORD(p_wp);
+	int target = HandleScroll(LOWORD(p_wp),m_viewOrigin.y, GetVisibleRectAbs().Height(),GetItemHeight(),GetViewAreaRectAbs().bottom,thumb);
 	MoveViewOrigin(CPoint(m_viewOrigin.x,target));
 	return 0;
 }
 LRESULT CListControlImpl::OnHScroll(UINT,WPARAM p_wp,LPARAM,BOOL&) {
-	int target = HandleScroll(LOWORD(p_wp),m_viewOrigin.x,GetVisibleRectAbs().Width(),GetItemHeight() /*fixme*/,GetViewAreaRectAbs().right,GetScrollThumbPos(SB_HORZ));
+	int thumb = HIWORD(p_wp); // GetScrollThumbPos(SB_HORZ);
+	int target = HandleScroll(LOWORD(p_wp),m_viewOrigin.x, GetVisibleRectAbs().Width(),GetItemHeight() /*fixme*/,GetViewAreaRectAbs().right,thumb);
 	MoveViewOrigin(CPoint(target,m_viewOrigin.y));
 	return 0;
 }
@@ -317,12 +326,7 @@ void CListControlImpl::PaintContent(CRect rcPaint, HDC dc) {
 	renderDC = bufferDC;
 	this->RenderBackground(renderDC, rcPaint);
 		
-	{
-		const CPoint pt = GetViewOffset();
-		OffsetWindowOrgScope offsetScope(renderDC, pt);
-		CRect renderRect = rcPaint; renderRect.OffsetRect(pt);
-		RenderRect(renderRect,renderDC);
-	}
+	RenderRect(rcPaint, renderDC);
 }
 
 void CListControlImpl::OnPrintClient(HDC dc, UINT uFlags) {
@@ -392,16 +396,24 @@ bool CListControlImpl::GetItemRangeAbsInclHeaders(const CRect & p_rect,t_size & 
 bool CListControlImpl::GetItemRangeAbs(const CRect & p_rect,t_size & p_base,t_size & p_count) const {
 	if (p_rect.right < 0 || p_rect.left >= GetItemWidth()) return false;
 
-	return pfc::binarySearch<comparator_rect>::runGroup(RectSearchHelper_Items(*this),0,GetItemCount(),p_rect,p_base,p_count);
+	bool rv = pfc::binarySearch<comparator_rect>::runGroup(RectSearchHelper_Items(*this),0,GetItemCount(),p_rect,p_base,p_count);
+#if 0
+	if (rv) {
+		static unsigned last_base, last_count;
+		if (last_base != p_base || last_count != p_count) {
+			last_base = p_base; last_count = p_count;
+			pfc::outputDebugLine(pfc::format("GetItemRangeAbs: ", p_rect.top, " ", p_rect.bottom, " ", p_base, " ", p_count));
+		}
+	}
+#endif
+	return rv;
 }
 
 void CListControlImpl::RenderRect(const CRect & p_rect,CDCHandle p_dc) {
-	const CRect rectAbs = p_rect;
-
 	t_size base, count;
-	if (GetItemRangeAbs(rectAbs,base,count)) {
+	if (GetItemRange(p_rect,base,count)) {
 		for(t_size walk = 0; walk < count; ++walk) {
-			CRect rcUpdate, rcItem = GetItemRectAbs(base+walk);
+			CRect rcUpdate, rcItem = GetItemRect(base+walk);
 			if (rcUpdate.IntersectRect(rcItem,p_rect)) {
 				DCStateScope dcState(p_dc);
 				if (p_dc.IntersectClipRect(rcUpdate) != NULLREGION) {
@@ -415,12 +427,15 @@ void CListControlImpl::RenderRect(const CRect & p_rect,CDCHandle p_dc) {
 			}
 		}
 	}
+	CRect rectAbs;
+	rectAbs = p_rect;
+	rectAbs.OffsetRect(GetViewOffset());
 
 	if (pfc::binarySearch<comparator_rect>::runGroup(RectSearchHelper_Groups(*this),0,GetGroupCount(),rectAbs,base,count)) {
 		for(t_size walk = 0; walk < count; ++walk) {
 			CRect rcHeader, rcUpdate;
 			const int id = (int)(base+walk+1);
-			if (GetGroupHeaderRectAbs(id,rcHeader) && rcUpdate.IntersectRect(rcHeader,p_rect)) {
+			if (GetGroupHeaderRect(id,rcHeader) && rcUpdate.IntersectRect(rcHeader,p_rect)) {
 				DCStateScope dcState(p_dc);
 				if (p_dc.IntersectClipRect(rcUpdate) != NULLREGION) {
 					try {
@@ -434,7 +449,7 @@ void CListControlImpl::RenderRect(const CRect & p_rect,CDCHandle p_dc) {
 		}
 	}
 
-	RenderOverlay(p_rect,p_dc);
+	RenderOverlay2(p_rect,p_dc);
 }
 
 CRect CListControlImpl::GetItemRect(t_size p_item) const {
@@ -464,6 +479,17 @@ CRect CListControlImpl::GetItemRectAbs(t_size p_item) const {
 	rcItem.bottom = rcItem.top + itemHeight;
 	rcItem.left = 0;
 	rcItem.right = rcItem.left + itemWidth;
+
+#if 0
+	{
+		static CRect lastRect;
+		if (lastRect != rcItem) {
+			lastRect = rcItem;
+			pfc::outputDebugLine(pfc::format("GetItemRectAbs: ", p_item, " - ", rcItem.top, ",", rcItem.bottom));
+
+		}
+	}
+#endif
 	return rcItem;
 }
 bool CListControlImpl::GetGroupHeaderRectAbs(int p_group,CRect & p_rect) const {
@@ -521,7 +547,9 @@ void CListControlImpl::UpdateItems(const pfc::bit_array & p_mask) {
 		bool found = false;
 		for(t_size walk = p_mask.find_first(true,base,max); walk < max; walk = p_mask.find_next(true,walk,max)) {
 			found = true;
-			AddUpdateRect(updateRgn,GetItemRect(walk));
+			auto rc = GetItemRect(walk);
+			// pfc::outputDebugLine(pfc::format("Updating rect: ", rc.top, ", ", rc.bottom));
+			AddUpdateRect(updateRgn,rc);
 		}
 		if (found) {
 			InvalidateRgn(updateRgn);
@@ -833,7 +861,12 @@ LRESULT CListControlFontOps::OnGetFont(UINT,WPARAM,LPARAM,BOOL&) {
 }
 
 void CListControlImpl::SetCaptureEx(CaptureProc_t proc) {
-	this->m_captureProc = proc; SetCapture();
+	this->m_captureProc = proc; 
+	this->TrackMouseLeave();
+}
+
+void CListControlImpl::ReleaseCaptureEx() {
+	m_captureProc = nullptr;
 }
 
 LRESULT CListControlImpl::MousePassThru(UINT msg, WPARAM wp, LPARAM lp) {
@@ -841,8 +874,7 @@ LRESULT CListControlImpl::MousePassThru(UINT msg, WPARAM wp, LPARAM lp) {
 	if ( p ) {
 		CPoint pt(lp);
 		if (!p(msg, (DWORD) wp, pt ) ) {
-			ReleaseCapture();
-			m_captureProc = nullptr;
+			ReleaseCaptureEx();
 		}
 		return 0;
 	}
@@ -948,19 +980,13 @@ HRESULT CListControlImpl::DoDragDrop(LPDATAOBJECT pDataObj, LPDROPSOURCE pDropSo
 }
 
 void CListControlImpl::OnKillFocus(CWindow) {
-	if (m_captureProc) {
-		ReleaseCapture();
-		m_captureProc = nullptr;
-	}
+	ReleaseCaptureEx();
 	SetMsgHandled(FALSE);
 }
 
 void CListControlImpl::OnWindowPosChanged(LPWINDOWPOS arg) {
 	if ( arg->flags & SWP_HIDEWINDOW ) {
-		if (m_captureProc) {
-			ReleaseCapture();
-			m_captureProc = nullptr;
-		}
+		ReleaseCaptureEx();
 	}
 	SetMsgHandled(FALSE);
 }
@@ -970,7 +996,7 @@ void CListControlHeaderImpl::RenderItemBackground(CDCHandle p_dc,const CRect & p
 		__super::RenderItemBackground(p_dc, p_itemRect, item, bkColor);
 	} else {
 		auto cnt = this->GetColumnCount();
-		uint32_t x = 0;
+		uint32_t x = p_itemRect.left;
 		for( size_t walk = 0; walk < cnt; ) {
 			auto span = this->GetSubItemSpan( item, walk );
 			PFC_ASSERT( span > 0 );
@@ -985,5 +1011,20 @@ void CListControlHeaderImpl::RenderItemBackground(CDCHandle p_dc,const CRect & p
 			__super::RenderItemBackground(p_dc, rc, item, bkColor);
 			walk += span;
 		}
+	}
+}
+
+
+void CListControlImpl::TrackMouseLeave() {
+	TRACKMOUSEEVENT tme = { sizeof(tme) };
+	tme.dwFlags = TME_LEAVE;
+	tme.hwndTrack = m_hWnd;
+	TrackMouseEvent(&tme);
+}
+
+void CListControlImpl::OnMouseLeave() {
+	if (m_captureProc) {
+		m_captureProc(WM_MOUSELEAVE, 0, -1);
+		ReleaseCaptureEx();
 	}
 }

@@ -169,6 +169,8 @@ protected:
 	void ColumnWidthFix(); // Call RecalcItemWidth() / ProcessAutoWidth()
 
 	void ReloadData() override;
+
+	virtual void RequestEditItem(size_t item, size_t subItem);
 private:
 	void OnEnable(BOOL) { Invalidate(); }
 	HBRUSH OnCtlColorStatic(CDCHandle dc, CStatic wndStatic);

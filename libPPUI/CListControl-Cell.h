@@ -36,4 +36,6 @@ public:
 	virtual HCURSOR HotCursor() { return NULL; }
 	virtual bool AllowDrawThemeText() { return false; }
 	virtual LONG AccRole();
+	virtual uint32_t EditFlags() { return 0; }
+	virtual bool ClickToEdit() { return false; }
 };

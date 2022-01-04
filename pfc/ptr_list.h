@@ -1,13 +1,18 @@
 #pragma once
+#include "list.h"
 
 namespace pfc {
 
 	template<class T, class B = list_t<T*> >
-	class ptr_list_t : public B
-	{
+	class ptr_list_t : public B {
 	public:
+		typedef ptr_list_t<T, B> self_t;
 		ptr_list_t() {}
-		ptr_list_t(const ptr_list_t<T> & p_source) {*this = p_source;}
+		ptr_list_t(const self_t & other) { copy(other); }
+		ptr_list_t(self_t&& other) { move(other); }
+
+		self_t const& operator=(self_t const& other) { copy(other); return *this; }
+		self_t const& operator=(self_t && other) { move(other); return *this; }
 
 		void free_by_idx(t_size n) {free_mask(bit_array_one(n));}
 		void free_all() {this->remove_all_ex(free);}

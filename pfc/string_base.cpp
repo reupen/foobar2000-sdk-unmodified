@@ -1,7 +1,25 @@
-#include "pfc.h"
+#include "pfc-lite.h"
+#include "string_base.h"
+#include "pathUtils.h"
+#include "primitives.h"
+#include "other.h"
 #include <set>
+#include <math.h>
+#include "splitString2.h"
 
 namespace pfc {
+
+bool string_base::is_valid_utf8() const { return pfc::is_valid_utf8(get_ptr()); }
+t_size string_base::scan_filename() const { return pfc::scan_filename(get_ptr()); }
+t_size string_base::find_first(char p_char, t_size p_start) const { return pfc::string_find_first(get_ptr(), p_char, p_start); }
+t_size string_base::find_last(char p_char, t_size p_start) const { return pfc::string_find_last(get_ptr(), p_char, p_start); }
+t_size string_base::find_first(const char* p_string, t_size p_start) const { return pfc::string_find_first(get_ptr(), p_string, p_start); }
+t_size string_base::find_last(const char* p_string, t_size p_start) const { return pfc::string_find_last(get_ptr(), p_string, p_start); }
+bool string_base::has_prefix(const char* prefix) const { return string_has_prefix(get_ptr(), prefix); }
+bool string_base::has_prefix_i(const char* prefix) const { return string_has_prefix_i(get_ptr(), prefix); }
+bool string_base::has_suffix(const char* suffix) const { return string_has_suffix(get_ptr(), suffix); }
+bool string_base::has_suffix_i(const char* suffix) const { return string_has_suffix_i(get_ptr(), suffix); }
+bool string_base::equals(const char* other) const { return strcmp(*this, other) == 0; }
 
 void string_receiver::add_char(t_uint32 p_char)
 {
@@ -70,7 +88,8 @@ void string_base::skip_trailing_char(unsigned skip)
 	if (need_trunc) truncate(trunc);
 }
 
-format_time::format_time(t_uint64 p_seconds) {
+string8 format_time(uint64_t p_seconds) {
+	string8 ret;
 	t_uint64 length = p_seconds;
 	unsigned weeks,days,hours,minutes,seconds;
 	
@@ -81,21 +100,26 @@ format_time::format_time(t_uint64 p_seconds) {
 	seconds = (unsigned) ( ( length ) % 60 );
 
 	if (weeks) {
-		m_buffer << weeks << "wk ";
+		ret << weeks << "wk ";
 	}
 	if (days || weeks) {
-		m_buffer << days << "d ";
+		ret << days << "d ";
 	}
 	if (hours || days || weeks) {
-		m_buffer << hours << ":" << format_uint(minutes,2) << ":" << format_uint(seconds,2);
+		ret << hours << ":" << format_uint(minutes,2) << ":" << format_uint(seconds,2);
 	} else {
-		m_buffer << minutes << ":" << format_uint(seconds,2);
+		ret << minutes << ":" << format_uint(seconds,2);
 	}
+	return ret;
 }
 
 bool is_path_separator(unsigned c)
 {
+#ifdef _WIN32
 	return c=='\\' || c=='/' || c=='|' || c==':';
+#else
+    return c == '/';
+#endif
 }
 
 bool is_path_bad_char(unsigned c)
@@ -121,8 +145,9 @@ char * strdup_n(const char * src,t_size len)
 	return ret;
 }
 
-string_filename::string_filename(const char * fn)
+string8 string_filename(const char * fn)
 {
+	string8 ret;
 	fn += pfc::scan_filename(fn);
 	const char * ptr=fn,*dot=0;
 	while(*ptr && *ptr!='?')
@@ -131,25 +156,28 @@ string_filename::string_filename(const char * fn)
 		ptr++;
 	}
 
-	if (dot && dot>fn) set_string(fn,dot-fn);
-	else set_string(fn);
+	if (dot && dot>fn) ret.set_string(fn,dot-fn);
+	else ret.set_string(fn);
+	return ret;
 }
 
-const char * filename_ext_v2(const char * fn, char slash) {
-	if (slash == 0) {
+const char * filename_ext_v2( const char * fn, char slash ) {
+    if ( slash == 0 ) {
 		slash = pfc::io::path::getDefaultSeparator();
 	}
-	size_t split = pfc::string_find_last(fn, slash);
-	if (split == pfc_infinite) return fn;
+    size_t split = pfc::string_find_last( fn, slash );
+    if ( split == SIZE_MAX ) return fn;
 	return fn + split + 1;
 }
 
-string_filename_ext::string_filename_ext(const char * fn)
+string8 string_filename_ext(const char * fn)
 {
+	string8 ret;
 	fn += pfc::scan_filename(fn);
 	const char * ptr = fn;
 	while(*ptr && *ptr!='?') ptr++;
-	set_string(fn,ptr-fn);
+	ret.set_string(fn,ptr-fn);
+	return ret;
 }
 
 size_t find_extension_offset(const char * src) {
@@ -170,9 +198,9 @@ size_t find_extension_offset(const char * src) {
 	return SIZE_MAX;
 }
 
-string_extension::string_extension(const char * src)
+string8 string_extension(const char * src)
 {
-	buffer[0]=0;
+	string8 ret;
 	const char * start = src + pfc::scan_filename(src);
 	const char * end = start + strlen(start);
 	const char * ptr = end-1;
@@ -185,13 +213,9 @@ string_extension::string_extension(const char * src)
 	if (ptr>=start && *ptr=='.')
 	{
 		ptr++;
-		t_size len = end-ptr;
-		if (len<PFC_TABSIZE(buffer))
-		{
-			memcpy(buffer,ptr,len*sizeof(char));
-			buffer[len]=0;
-		}
+		ret.set_string(ptr, end-ptr);
 	}
+	return ret;
 }
 
 
@@ -361,7 +385,7 @@ t_size strstr_ex(const char * p_string,t_size p_string_len,const char * p_substr
 		if (delta == 0) break;
 		index += delta;
 	}
-	return ~0;
+	return SIZE_MAX;
 }
 
 unsigned atoui_ex(const char * p_string,t_size p_string_len)
@@ -452,139 +476,10 @@ t_int64 atoi64_ex(const char * src,t_size len)
 	return neg ? -ret : ret;
 }
 
-int stricmp_ascii_partial( const char * str, const char * substr) throw() {
-    size_t walk = 0;
-    for(;;) {
-        char c1 = str[walk];
-        char c2 = substr[walk];
-        c1 = ascii_tolower(c1); c2 = ascii_tolower(c2);
-        if (c2 == 0) return 0; // substr terminated = ret0 regardless of str content
-        if (c1<c2) return -1; // ret -1 early
-        else if (c1>c2) return 1; // ret 1 early
-        // else c1 == c2 and c2 != 0 so c1 != 0 either
-        ++walk; // go on
-    }
-}
 
-int stricmp_ascii_ex(const char * const s1,t_size const len1,const char * const s2,t_size const len2) throw() {
-	t_size walk1 = 0, walk2 = 0;
-	for(;;) {
-		char c1 = (walk1 < len1) ? s1[walk1] : 0;
-		char c2 = (walk2 < len2) ? s2[walk2] : 0;
-		c1 = ascii_tolower(c1); c2 = ascii_tolower(c2);
-		if (c1<c2) return -1;
-		else if (c1>c2) return 1;
-		else if (c1 == 0) return 0;
-		walk1++;
-		walk2++;
-	}
-
-}
-
-int wstricmp_ascii( const wchar_t * s1, const wchar_t * s2 ) throw() {
-	for(;;) {
-		wchar_t c1 = *s1, c2 = *s2;
-
-		if (c1 > 0 && c2 > 0 && c1 < 128 && c2 < 128) {
-			c1 = ascii_tolower_lookup((char)c1);
-			c2 = ascii_tolower_lookup((char)c2);
-		} else {
-			if (c1 == 0 && c2 == 0) return 0;
-		}
-		if (c1<c2) return -1;
-		else if (c1>c2) return 1;
-		else if (c1 == 0) return 0;
-
-		s1++;
-		s2++;
-	}
-}
-
-int stricmp_ascii(const char * s1,const char * s2) throw() {
-	for(;;) {
-		char c1 = *s1, c2 = *s2;
-
-		if (c1 > 0 && c2 > 0) {
-			c1 = ascii_tolower_lookup(c1);
-			c2 = ascii_tolower_lookup(c2);
-		} else {
-			if (c1 == 0 && c2 == 0) return 0;
-		}
-		if (c1<c2) return -1;
-		else if (c1>c2) return 1;
-		else if (c1 == 0) return 0;
-
-		s1++;
-		s2++;
-	}
-}
-
-static int naturalSortCompareInternal( const char * s1, const char * s2, bool insensitive) throw() {
-    for( ;; ) {
-        unsigned c1, c2;
-        size_t d1 = utf8_decode_char( s1, c1 );
-        size_t d2 = utf8_decode_char( s2, c2 );
-        if (d1 == 0 && d2 == 0) {
-            return 0;
-        }
-        if (char_is_numeric( c1 ) && char_is_numeric( c2 ) ) {
-            // Numeric block in both strings, do natural sort magic here
-            size_t l1 = 1, l2 = 1;
-            while( char_is_numeric( s1[l1] ) ) ++l1;
-            while( char_is_numeric( s2[l2] ) ) ++l2;
-            
-            size_t l = max_t(l1, l2);
-            for(size_t w = 0; w < l; ++w) {
-                char digit1, digit2;
-                
-                t_ssize off;
-                
-                off = w + l1 - l;
-                if (off >= 0) {
-                    digit1 = s1[w - l + l1];
-                } else {
-                    digit1 = 0;
-                }
-                off = w + l2 - l;
-                if (off >= 0) {
-                    digit2 = s2[w - l + l2];
-                } else {
-                    digit2 = 0;
-                }
-                if (digit1 < digit2) return -1;
-                if (digit1 > digit2) return 1;
-            }
-            
-            s1 += l1; s2 += l2;
-            continue;
-        }
-        
-
-        if (insensitive) {
-            c1 = charLower( c1 );
-            c2 = charLower( c2 );
-        }
-        if (c1 < c2) return -1;
-        if (c1 > c2) return 1;
-        
-        s1 += d1; s2 += d2;
-    }
-}
-int naturalSortCompare( const char * s1, const char * s2) throw() {
-    int v = naturalSortCompareInternal( s1, s2, true );
-    if (v) return v;
-    v = naturalSortCompareInternal( s1, s2, false );
-    if (v) return v;
-    return strcmp(s1, s2);
-}
-
-int naturalSortCompareI( const char * s1, const char * s2) throw() {
-    return naturalSortCompareInternal( s1, s2, true );
-}
-
-
-format_float::format_float(double p_val,unsigned p_width,unsigned p_prec)
+string8 format_float(double p_val,unsigned p_width,unsigned p_prec)
 {
+	string8 m_buffer;
 	char temp[64];
 	float_to_string(temp,64,p_val,p_prec,false);
 	temp[63] = 0;
@@ -592,6 +487,7 @@ format_float::format_float(double p_val,unsigned p_width,unsigned p_prec)
 	if (len < p_width)
 		m_buffer.add_chars(' ',p_width-len);
 	m_buffer += temp;
+	return m_buffer;
 }
 
 char format_hex_char(unsigned p_val)
@@ -600,8 +496,10 @@ char format_hex_char(unsigned p_val)
 	return (p_val < 10) ? p_val + '0' : p_val - 10 + 'A';
 }
 
-format_hex::format_hex(t_uint64 p_val,unsigned p_width)
+format_int_t format_hex(t_uint64 p_val,unsigned p_width)
 {
+	format_int_t ret;
+
 	if (p_width > 16) p_width = 16;
 	else if (p_width == 0) p_width = 1;
 	char temp[16];
@@ -616,10 +514,11 @@ format_hex::format_hex(t_uint64 p_val,unsigned p_width)
 	
 	if (n > 16 - p_width) n = 16 - p_width;
 	
-	char * out = m_buffer;
+	char * out = ret.m_buffer;
 	for(;n<16;n++)
 		*(out++) = temp[n];
 	*out = 0;
+	return ret;
 }
 
 char format_hex_char_lowercase(unsigned p_val)
@@ -628,8 +527,9 @@ char format_hex_char_lowercase(unsigned p_val)
 	return (p_val < 10) ? p_val + '0' : p_val - 10 + 'a';
 }
 
-format_hex_lowercase::format_hex_lowercase(t_uint64 p_val,unsigned p_width)
+format_int_t format_hex_lowercase(t_uint64 p_val,unsigned p_width)
 {
+	format_int_t ret;
 	if (p_width > 16) p_width = 16;
 	else if (p_width == 0) p_width = 1;
 	char temp[16];
@@ -644,16 +544,18 @@ format_hex_lowercase::format_hex_lowercase(t_uint64 p_val,unsigned p_width)
 	
 	if (n > 16 - p_width) n = 16 - p_width;
 	
-	char * out = m_buffer;
+	char * out = ret.m_buffer;
 	for(;n<16;n++)
 		*(out++) = temp[n];
 	*out = 0;
+	return ret;
 }
 
-format_uint::format_uint(t_uint64 val,unsigned p_width,unsigned p_base)
+format_int_t format_uint(t_uint64 val,unsigned p_width,unsigned p_base)
 {
+	format_int_t ret;
 	
-	enum {max_width = PFC_TABSIZE(m_buffer) - 1};
+	enum {max_width = PFC_TABSIZE(ret.m_buffer) - 1};
 
 	if (p_width > max_width) p_width = max_width;
 	else if (p_width == 0) p_width = 1;
@@ -671,15 +573,18 @@ format_uint::format_uint(t_uint64 val,unsigned p_width,unsigned p_base)
 	
 	if (n > max_width - p_width) n = max_width - p_width;
 	
-	char * out = m_buffer;
+	char * out = ret.m_buffer;
 
 	for(;n<max_width;n++)
 		*(out++) = temp[n];
 	*out = 0;
+	
+	return ret;
 }
 
-format_fixedpoint::format_fixedpoint(t_int64 p_val,unsigned p_point)
+string8 format_fixedpoint(t_int64 p_val,unsigned p_point)
 {
+	string8 m_buffer;
 	unsigned div = 1;
 	for(unsigned n=0;n<p_point;n++) div *= 10;
 
@@ -687,16 +592,19 @@ format_fixedpoint::format_fixedpoint(t_int64 p_val,unsigned p_point)
 
 	
 	m_buffer << format_int(p_val / div) << "." << format_int(p_val % div, p_point);
+	return m_buffer;
 }
 
-format_int::format_int(t_int64 p_val,unsigned p_width,unsigned p_base)
+
+format_int_t format_int(t_int64 p_val,unsigned p_width,unsigned p_base)
 {
+	format_int_t ret;
 	bool neg = false;
 	t_uint64 val;
 	if (p_val < 0) {neg = true; val = (t_uint64)(-p_val);}
 	else val = (t_uint64)p_val;
 	
-	enum {max_width = PFC_TABSIZE(m_buffer) - 1};
+	enum {max_width = PFC_TABSIZE(ret.m_buffer) - 1};
 
 	if (p_width > max_width) p_width = max_width;
 	else if (p_width == 0) p_width = 1;
@@ -716,17 +624,20 @@ format_int::format_int(t_int64 p_val,unsigned p_width,unsigned p_base)
 	
 	if (n > max_width - p_width) n = max_width - p_width;
 	
-	char * out = m_buffer;
+	char * out = ret.m_buffer;
 
 	if (neg) *(out++) = '-';
 
 	for(;n<max_width;n++)
 		*(out++) = temp[n];
 	*out = 0;
+
+	return ret;
 }
 
-format_hexdump_lowercase::format_hexdump_lowercase(const void * p_buffer,t_size p_bytes,const char * p_spacing)
+string8 format_hexdump_lowercase(const void * p_buffer,t_size p_bytes,const char * p_spacing)
 {
+	string8 m_formatter;
 	t_size n;
 	const t_uint8 * buffer = (const t_uint8*)p_buffer;
 	for(n=0;n<p_bytes;n++)
@@ -734,10 +645,12 @@ format_hexdump_lowercase::format_hexdump_lowercase(const void * p_buffer,t_size 
 		if (n > 0 && p_spacing != 0) m_formatter << p_spacing;
 		m_formatter << format_hex_lowercase(buffer[n],2);
 	}
+	return m_formatter;
 }
 
-format_hexdump::format_hexdump(const void * p_buffer,t_size p_bytes,const char * p_spacing)
+string8 format_hexdump(const void * p_buffer,t_size p_bytes,const char * p_spacing)
 {
+	string8 m_formatter;
 	t_size n;
 	const t_uint8 * buffer = (const t_uint8*)p_buffer;
 	for(n=0;n<p_bytes;n++)
@@ -745,12 +658,14 @@ format_hexdump::format_hexdump(const void * p_buffer,t_size p_bytes,const char *
 		if (n > 0 && p_spacing != 0) m_formatter << p_spacing;
 		m_formatter << format_hex(buffer[n],2);
 	}
+	return m_formatter;
 }
 
 
 
-string_replace_extension::string_replace_extension(const char * p_path,const char * p_ext)
+string8 string_replace_extension(const char * p_path,const char * p_ext)
 {
+	string8 m_data;
 	m_data = p_path;
 	t_size dot = m_data.find_last('.');
 	if (dot < m_data.scan_filename())
@@ -763,24 +678,27 @@ string_replace_extension::string_replace_extension(const char * p_path,const cha
 		m_data.truncate(dot+1);
 		m_data += p_ext;
 	}
+	return m_data;
 }
 
-string_directory::string_directory(const char * p_path)
+string8 string_directory(const char * p_path)
 {
+	string8 ret;
 	t_size ptr = scan_filename(p_path);
 	if (ptr > 1) {
 		if (is_path_separator(p_path[ptr-1]) && !is_path_separator(p_path[ptr-2])) --ptr;
 	}
-	m_data.set_string(p_path,ptr);
+	ret.set_string(p_path,ptr);
+	return ret;
 }
 
 t_size scan_filename(const char * ptr)
 {
 	t_size n;
 	t_size _used = strlen(ptr);
-	for(n=_used-1;n!=~0;n--)
+	for(n=_used;n!=0;n--)
 	{
-		if (is_path_separator(ptr[n])) return n+1;
+		if (is_path_separator(ptr[n-1])) return n;
 	}
 	return 0;
 }
@@ -791,23 +709,23 @@ t_size string_find_first(const char * p_string,char p_tofind,t_size p_start) {
 	for(t_size walk = p_start; p_string[walk]; ++walk) {
 		if (p_string[walk] == p_tofind) return walk;
 	}
-	return ~0;
+	return SIZE_MAX;
 }
 t_size string_find_last(const char * p_string,char p_tofind,t_size p_start) {
-	return string_find_last_ex(p_string,~0,&p_tofind,1,p_start);
+	return string_find_last_ex(p_string,SIZE_MAX,&p_tofind,1,p_start);
 }
 t_size string_find_first(const char * p_string,const char * p_tofind,t_size p_start) {
-	return string_find_first_ex(p_string,~0,p_tofind,~0,p_start);
+	return string_find_first_ex(p_string,SIZE_MAX,p_tofind,SIZE_MAX,p_start);
 }
 t_size string_find_last(const char * p_string,const char * p_tofind,t_size p_start) {
-	return string_find_last_ex(p_string,~0,p_tofind,~0,p_start);
+	return string_find_last_ex(p_string,SIZE_MAX,p_tofind,SIZE_MAX,p_start);
 }
 
 t_size string_find_first_ex(const char * p_string,t_size p_string_length,char p_tofind,t_size p_start) {
 	for(t_size walk = p_start; walk < p_string_length && p_string[walk]; ++walk) {
 		if (p_string[walk] == p_tofind) return walk;
 	}
-	return ~0;
+	return SIZE_MAX;
 }
 t_size string_find_last_ex(const char * p_string,t_size p_string_length,char p_tofind,t_size p_start) {
 	return string_find_last_ex(p_string,p_string_length,&p_tofind,1,p_start);
@@ -820,7 +738,7 @@ t_size string_find_first_ex(const char * p_string,t_size p_string_length,const c
 			if (_strcmp_partial_ex(p_string+walk,p_string_length-walk,p_tofind,p_tofind_length) == 0) return walk;
 		}
 	}
-	return ~0;
+	return SIZE_MAX;
 }
 t_size string_find_last_ex(const char * p_string,t_size p_string_length,const char * p_tofind,t_size p_tofind_length,t_size p_start) {
 	p_string_length = strlen_max(p_string,p_string_length); p_tofind_length = strlen_max(p_tofind,p_tofind_length);
@@ -830,14 +748,14 @@ t_size string_find_last_ex(const char * p_string,t_size p_string_length,const ch
 			if (_strcmp_partial_ex(p_string+walk,p_string_length-walk,p_tofind,p_tofind_length) == 0) return walk;
 		}
 	}
-	return ~0;
+	return SIZE_MAX;
 }
 
 t_size string_find_first_nc(const char * p_string,t_size p_string_length,char c,t_size p_start) {
 	for(t_size walk = p_start; walk < p_string_length; walk++) {
 		if (p_string[walk] == c) return walk;
 	}
-	return ~0;
+	return SIZE_MAX;
 }
 
 t_size string_find_first_nc(const char * p_string,t_size p_string_length,const char * p_tofind,t_size p_tofind_length,t_size p_start) {
@@ -847,7 +765,7 @@ t_size string_find_first_nc(const char * p_string,t_size p_string_length,const c
 			if (memcmp(p_string+walk, p_tofind, p_tofind_length) == 0) return walk;
 		}
 	}
-	return ~0;
+	return SIZE_MAX;
 }
 
 
@@ -964,15 +882,17 @@ double parse_timecode(const char * in) {
 	}
 }
 
-format_time_ex::format_time_ex(double p_seconds,unsigned p_extra) {
-	if (p_seconds < 0) {m_buffer << "-"; p_seconds = -p_seconds;}
+string8 format_time_ex(double p_seconds,unsigned p_extra) {
+	string8 ret;
+	if (p_seconds < 0) {ret << "-"; p_seconds = -p_seconds;}
 	t_uint64 pow10 = pow10_helper(p_extra);
 	t_uint64 ticks = pfc::rint64(pow10 * p_seconds);
 
-	m_buffer << pfc::format_time(ticks / pow10);
+	ret << pfc::format_time(ticks / pow10);
 	if (p_extra>0) {
-		m_buffer << "." << pfc::format_uint(ticks % pow10, p_extra);
+		ret << "." << pfc::format_uint(ticks % pow10, p_extra);
 	}
+	return ret;
 }
 
 void stringToUpperAppend(string_base & out, const char * src, t_size len) {
@@ -995,41 +915,9 @@ void stringToLowerAppend(string_base & out, const char * src, t_size len) {
 		len-=d;
 	}
 }
-int stringCompareCaseInsensitiveEx(string_part_ref s1, string_part_ref s2) {
-	t_size w1 = 0, w2 = 0;
-	for(;;) {
-		unsigned c1, c2; t_size d1, d2;
-		d1 = utf8_decode_char(s1.m_ptr + w1, c1, s1.m_len - w1);
-		d2 = utf8_decode_char(s2.m_ptr + w2, c2, s2.m_len - w2);
-		if (d1 == 0 && d2 == 0) return 0;
-		else if (d1 == 0) return -1;
-		else if (d2 == 0) return 1;
-		else {
-			c1 = charLower(c1); c2 = charLower(c2);
-			if (c1 < c2) return -1;
-			else if (c1 > c2) return 1;
-		}
-		w1 += d1; w2 += d2;
-	}
-}
-int stringCompareCaseInsensitive(const char * s1, const char * s2) {
-	for(;;) {
-		unsigned c1, c2; t_size d1, d2;
-		d1 = utf8_decode_char(s1,c1);
-		d2 = utf8_decode_char(s2,c2);
-		if (d1 == 0 && d2 == 0) return 0;
-		else if (d1 == 0) return -1;
-		else if (d2 == 0) return 1;
-		else {
-			c1 = charLower(c1); c2 = charLower(c2);
-			if (c1 < c2) return -1;
-			else if (c1 > c2) return 1;
-		}
-		s1 += d1; s2 += d2;
-	}
-}
 
-void format_file_size_short::format(t_uint64 size) {
+string8 format_file_size_short(uint64_t size, uint64_t * outUsedScale) {
+	string8 ret;
 	t_uint64 scale = 1;
 	const char * unit = "B";
 	const char * const unitTable[] = {"B","KB","MB","GB","TB"};
@@ -1038,21 +926,22 @@ void format_file_size_short::format(t_uint64 size) {
 		if (size < next) break;
 		scale = next; unit = unitTable[walk];
 	}
-	*this << ( size  / scale );
+	ret << ( size  / scale );
 
-	if (scale > 1 && length() < 3) {
-		t_size digits = 3 - length();
+	if (scale > 1 && ret.length() < 3) {
+		t_size digits = 3 - ret.length();
 		const t_uint64 mask = pow_int(10,digits);
 		t_uint64 remaining = ( (size * mask / scale) % mask );
 		while(digits > 0 && (remaining % 10) == 0) {
 			remaining /= 10; --digits;
 		}
 		if (digits > 0) {
-			*this << "." << format_uint(remaining, (t_uint32)digits);
+			ret << "." << format_uint(remaining, (t_uint32)digits);
 		}
 	}
-	*this << " " << unit;
-	m_scale = scale;
+	ret << " " << unit;
+	if (outUsedScale != nullptr) *outUsedScale = scale;
+	return ret;
 }
 
 bool string_base::truncate_eol(t_size start)
@@ -1169,6 +1058,7 @@ void urlEncode(pfc::string_base & out, const char * in) {
 }
 
 unsigned char_to_dec(char c) {
+	PFC_ASSERT(c != 0);
 	if (c >= '0' && c <= '9') return (unsigned)(c - '0');
 	else throw exception_invalid_params();
 }
@@ -1353,6 +1243,53 @@ void string_base::fix_dir_separator(char c) {
 		return ret;
 	}
 
+
+	string8 format_char(char c) {
+		string8 ret; ret.add_byte(c); return ret;
+	}
+
+    string8 format_ptr( const void * ptr ) {
+        string8 temp;
+        temp << "0x";
+        temp << format_hex_lowercase( (size_t) ptr, sizeof(ptr) * 2 );
+        return temp;
+    }
+
+
+	string8 format_pad_left(t_size p_chars, t_uint32 p_padding, const char * p_string, t_size p_string_length) {
+		string8 m_buffer;
+		t_size source_len = 0, source_walk = 0;
+
+		while (source_walk < p_string_length && source_len < p_chars) {
+			unsigned dummy;
+			t_size delta = pfc::utf8_decode_char(p_string + source_walk, dummy, p_string_length - source_walk);
+			if (delta == 0) break;
+			source_len++;
+			source_walk += delta;
+		}
+
+		m_buffer.add_string(p_string, source_walk);
+		m_buffer.add_chars(p_padding, p_chars - source_len);
+		return m_buffer;
+	}
+
+	string8 format_pad_right(t_size p_chars, t_uint32 p_padding, const char * p_string, t_size p_string_length) {
+		string8 m_buffer;
+		t_size source_len = 0, source_walk = 0;
+
+		while (source_walk < p_string_length && source_len < p_chars) {
+			unsigned dummy;
+			t_size delta = pfc::utf8_decode_char(p_string + source_walk, dummy, p_string_length - source_walk);
+			if (delta == 0) break;
+			source_len++;
+			source_walk += delta;
+		}
+
+		m_buffer.add_chars(p_padding, p_chars - source_len);
+		m_buffer.add_string(p_string, source_walk);
+		return m_buffer;
+	}
+
 	string8 stringToUpper(const char * str, size_t len) {
 		string8 ret;
 		stringToUpperAppend(ret, str, len);
@@ -1361,6 +1298,15 @@ void string_base::fix_dir_separator(char c) {
 	string8 stringToLower(const char * str, size_t len) {
 		string8 ret;
 		stringToLowerAppend(ret, str, len);
+		return ret;
+	}
+
+	pfc::string8 prefixLines(const char* str, const char* prefix, const char * setEOL) {
+		const auto temp = pfc::splitStringByLines2(str);
+		pfc::string8 ret; ret.prealloc(1024);
+		for (auto& line : temp) {
+			if ( line.length() > 0 ) ret << prefix << line << setEOL;
+		}
 		return ret;
 	}
 

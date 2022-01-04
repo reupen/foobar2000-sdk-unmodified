@@ -26,6 +26,7 @@ public:
 		NOTIFY_HANDLER_EX(m_ID, TVN_SELCHANGED, OnSelChangedFilter)
 		NOTIFY_HANDLER_EX(m_ID, NM_SETFOCUS, OnFocus)
 		NOTIFY_HANDLER_EX(m_ID, NM_KILLFOCUS, OnFocus)
+		NOTIFY_HANDLER_EX(m_ID, NM_CUSTOMDRAW, OnCustomDraw)
 	END_MSG_MAP()
 
 	const unsigned m_ID;
@@ -285,6 +286,23 @@ private:
 			m_selection.insert( item );
 		}
 		UpdateItem(tree, item);
+	}
+
+	LRESULT OnCustomDraw(LPNMHDR hdr) {
+		NMTVCUSTOMDRAW* info = (NMTVCUSTOMDRAW*)hdr;
+		switch (info->nmcd.dwDrawStage) {
+		case CDDS_ITEMPREPAINT:
+			if (this->IsItemSelected((HTREEITEM)info->nmcd.dwItemSpec)) {
+				info->nmcd.uItemState |= CDIS_SELECTED;
+			} else {
+				info->nmcd.uItemState &= ~(CDIS_FOCUS | CDIS_SELECTED);
+			}
+			return CDRF_DODEFAULT;
+		case CDDS_PREPAINT:
+			return CDRF_NOTIFYITEMDRAW;
+		default:
+			return CDRF_DODEFAULT;
+		}
 	}
 public:
 	void SelectSingleItem(CTreeViewCtrl tree, HTREEITEM item) {

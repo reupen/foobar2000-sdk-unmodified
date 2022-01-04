@@ -50,6 +50,17 @@ protected:
 	}
 
 	void TableEdit_OnColorsChanged() {}
+	t_uint32 TableEdit_GetEditFlags(t_size item, t_size subItem) const override {
+		auto ret = __super::TableEdit_GetEditFlags(item, subItem);
+		if (this->GetCellTypeSupported()) {
+			auto cell = this->GetCellType(item, subItem);
+			if (cell != nullptr) ret |= cell->EditFlags();
+		}
+		return ret;
+	}
+	void RequestEditItem(size_t item, size_t subItem) override {
+		this->TableEdit_Start(item, subItem);
+	}
 private:
 	LRESULT OnCtlColor(UINT,WPARAM wp,LPARAM lp,BOOL&) {
 		CDCHandle dc((HDC)wp);
