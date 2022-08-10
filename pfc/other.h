@@ -83,6 +83,4 @@ namespace pfc {
 		objDestructNotify * m_obj;
 
 	};
-
-    double exp_int( double base, int exp );
 }

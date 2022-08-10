@@ -126,7 +126,7 @@ public:
 		return insertAt;
 	}
 protected:
-	void OnSelectionChanged(pfc::bit_array const & affected, pfc::bit_array const & status) {
+	void OnSelectionChanged(pfc::bit_array const & affected, pfc::bit_array const & status) override {
 		__super::OnSelectionChanged(affected, status);
 		if ( onSelChange ) onSelChange();
 	}

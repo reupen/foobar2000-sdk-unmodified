@@ -3,6 +3,7 @@
 namespace pfc {
     
     void alignedAlloc( void* & ptr, size_t & ptrSize, size_t newSize, size_t alignBytes);
+    void * alignedAlloc( size_t size, size_t align );
     void alignedFree( void * ptr );
     
 	template<unsigned alignBytes = 16>

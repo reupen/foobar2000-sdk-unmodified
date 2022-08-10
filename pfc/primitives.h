@@ -867,7 +867,8 @@ namespace pfc {
 		if (p_val > p_acc) p_acc = p_val;
 	}
 
-	t_uint64 pow_int(t_uint64 base, t_uint64 exp);
+	t_uint64 pow_int(t_uint64 base, t_uint64 exp) noexcept;
+	double exp_int(double base, int exp) noexcept;
 
 
 	template<typename t_val>
@@ -879,7 +880,7 @@ namespace pfc {
 		t_val & v;
 	};
 	template<typename obj_t>
-	incrementScope<obj_t> autoIncrement(obj_t& v) { return incrementScope(v); }
+	incrementScope<obj_t> autoIncrement(obj_t& v) { return incrementScope<obj_t>(v); }
 
 	inline unsigned countBits32(uint32_t i) {
 		const uint32_t mask = 0x11111111;
@@ -963,18 +964,18 @@ namespace pfc {
 
 namespace pfc {
 	template<typename t_char>
-	t_size strlen_max_t(const t_char* ptr, t_size max) {
+	t_size strlen_max_t(const t_char* ptr, t_size max) noexcept {
 		PFC_ASSERT(ptr != NULL || max == 0);
 		t_size n = 0;
 		while (n < max && ptr[n] != 0) n++;
 		return n;
 	}
 
-	inline t_size strlen_max(const char* ptr, t_size max) throw() { return strlen_max_t(ptr, max); }
-	inline t_size wcslen_max(const wchar_t* ptr, t_size max) throw() { return strlen_max_t(ptr, max); }
+	inline t_size strlen_max(const char* ptr, t_size max) noexcept { return strlen_max_t(ptr, max); }
+	inline t_size wcslen_max(const wchar_t* ptr, t_size max) noexcept { return strlen_max_t(ptr, max); }
 
 #ifdef _WINDOWS
-	inline t_size tcslen_max(const TCHAR* ptr, t_size max) { return strlen_max_t(ptr, max); }
+	inline t_size tcslen_max(const TCHAR* ptr, t_size max) noexcept { return strlen_max_t(ptr, max); }
 #endif
 }
 

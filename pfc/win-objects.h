@@ -150,6 +150,9 @@ public:
     // Two-wait event functions, return 0 on timeout, 1 on evt1 set, 2 on evt2 set
     static int g_twoEventWait( win32_event & ev1, win32_event & ev2, double timeout );
     static int g_twoEventWait( HANDLE ev1, HANDLE ev2, double timeout );
+
+	// Multi-wait. Returns SIZE_MAX on timeout, 0 based event index if either event becomes set.
+	static size_t g_multiWait(const HANDLE* events, size_t count, double timeout);
 private:
 	win32_event(const win32_event&) = delete;
 	void operator=(const win32_event &) = delete;

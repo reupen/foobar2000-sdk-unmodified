@@ -106,6 +106,8 @@ namespace pfc {
     typedef nix_event event;
 
     double nixGetTime();
+    typedef uint64_t tickcount_t;
+    tickcount_t getTickCount();
 
     bool nixReadSymLink( string_base & strOut, const char * path );
     bool nixSelfProcessPath( string_base & strOut );

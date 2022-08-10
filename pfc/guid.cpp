@@ -25,7 +25,7 @@ static const GUID <<name>> =
 
 */
 namespace {
-	class _GUID_from_text : public GUID
+	class _GUID_from_text
 	{
 		unsigned read_hex(char c);
 		unsigned read_byte(const char * ptr);
@@ -34,6 +34,7 @@ namespace {
 		void read_bytes(unsigned char * out,unsigned num,const char * ptr);
 
 	public:
+        GUID m_val = pfc::guid_null;
 		_GUID_from_text(const char * text);
 	};
 
@@ -80,36 +81,41 @@ namespace {
 			else max = text + strlen(text);
 		}
 
-		(GUID)*this = pfc::guid_null;
 
+        bool OK = false;
 	
 		do {
 			if (text+8>max) break;
-			Data1 = read_dword(text);
+			m_val.Data1 = read_dword(text);
 			text += 8;
 			while(*text=='-') text++;
 			if (text+4>max) break;
-			Data2 = read_word(text);
+            m_val.Data2 = read_word(text);
 			text += 4;
 			while(*text=='-') text++;
 			if (text+4>max) break;
-			Data3 = read_word(text);
+            m_val.Data3 = read_word(text);
 			text += 4;
 			while(*text=='-') text++;
 			if (text+4>max) break;
-			read_bytes(Data4,2,text);
+			read_bytes(m_val.Data4,2,text);
 			text += 4;
 			while(*text=='-') text++;
 			if (text+12>max) break;
-			read_bytes(Data4+2,6,text);
+			read_bytes(m_val.Data4+2,6,text);
+            OK = true;
 		} while(false);
+        
+        if (!OK) {
+            m_val= pfc::guid_null;
+        }
 	}
 }
 
 namespace pfc {
 
 GUID GUID_from_text(const char * text) {
-	return _GUID_from_text( text );
+	return _GUID_from_text( text ).m_val;
 }
 
 static inline char print_hex_digit(unsigned val)

@@ -265,6 +265,9 @@ namespace pfc {
         gettimeofday(&tv, NULL);
         return importTimeval(tv);
     }
+    tickcount_t getTickCount() {
+        return rint64(nixGetTime() * 1000.f);
+    }
     
     bool nixReadSymLink( string_base & strOut, const char * path ) {
         size_t l = 1024;

@@ -62,7 +62,7 @@ HRESULT InitializeEditAC(HWND edit, const char * values, DWORD opts) {
 	pfc::com_ptr_t<CEnumString> acl = new CEnumString::TImpl();
 	for (const char * walk = values;;) {
 		const char * next = strchr(walk, '\n');
-		if (next == NULL) { acl->AddStringU(walk, ~0); break; }
+		if (next == NULL) { acl->AddStringU(walk, SIZE_MAX); break; }
 		acl->AddStringU(walk, next - walk);
 		walk = next + 1;
 	}

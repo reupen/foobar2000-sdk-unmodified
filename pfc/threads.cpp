@@ -45,13 +45,13 @@ namespace {
 #endif
 
 namespace pfc {
-	t_size getOptimalWorkerThreadCount() {
+	unsigned getOptimalWorkerThreadCount() {
 		return std::thread::hardware_concurrency();
 	}
 
-	t_size getOptimalWorkerThreadCountEx(t_size taskCountLimit) {
+	unsigned getOptimalWorkerThreadCountEx(size_t taskCountLimit) {
 		if (taskCountLimit <= 1) return 1;
-		return pfc::min_t(taskCountLimit,getOptimalWorkerThreadCount());
+		return (unsigned)pfc::min_t<size_t>(taskCountLimit,getOptimalWorkerThreadCount());
 	}
     
     

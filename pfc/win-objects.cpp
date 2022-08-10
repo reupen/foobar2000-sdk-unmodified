@@ -7,6 +7,7 @@
 #include "string_conv.h"
 #include "string_base.h"
 #include "debug.h"
+#include "string-conv-lite.h"
 
 #include "pfc-fb2k-hooks.h"
 
@@ -324,6 +325,16 @@ void win32_event::set_state(bool p_state) {
 	else ResetEvent(m_handle);
 }
 
+size_t win32_event::g_multiWait(const HANDLE* events, size_t count, double timeout) {
+	auto status = WaitForMultipleObjects((DWORD)count, events, FALSE, g_calculate_wait_time(timeout));
+	size_t idx = (size_t)(status - WAIT_OBJECT_0);
+	if (idx < count) {
+		return idx;
+	}
+	if (status == WAIT_TIMEOUT) return SIZE_MAX;
+	pfc::crash();
+}
+
 int win32_event::g_twoEventWait( HANDLE ev1, HANDLE ev2, double timeout ) {
     HANDLE h[2] = {ev1, ev2};
     switch(WaitForMultipleObjects(2, h, FALSE, g_calculate_wait_time( timeout ) )) {
@@ -442,6 +453,28 @@ namespace pfc {
     void yield() {
         Sleep(1);
     }
+
+	static pfc::string8 winUnicodeNormalize(const char* str, NORM_FORM form) {
+		pfc::string8 ret;
+		if (str != nullptr && *str != 0) {
+			auto w = wideFromUTF8(str);
+			int needed = NormalizeString(form, w, -1, nullptr, 0);
+			if (needed > 0) {
+				pfc::array_t<wchar_t> buf; buf.resize(needed);
+				int status = NormalizeString(form, w, -1, buf.get_ptr(), needed);
+				if (status > 0) {
+					ret = utf8FromWide(buf.get_ptr());
+				}
+			}
+		}
+		return ret;
+	}
+	pfc::string8 unicodeNormalizeD(const char* str) {
+		return winUnicodeNormalize(str, NormalizationD);
+	}
+	pfc::string8 unicodeNormalizeC(const char* str) {
+		return winUnicodeNormalize(str, NormalizationC);
+	}
 }
 
 #endif // _WIN32

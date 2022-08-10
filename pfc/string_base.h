@@ -12,6 +12,7 @@ namespace pfc {
 	bool is_path_separator(unsigned c);
 	bool is_path_bad_char(unsigned c);
 	bool is_valid_utf8(const char * param,t_size max = SIZE_MAX);
+    bool is_canonical_utf8(const char * param, size_t max = SIZE_MAX);
 	bool is_lower_ascii(const char * param);
 	bool is_multiline(const char * p_string,t_size p_len = SIZE_MAX);
 	bool has_path_bad_chars(const char * param);
@@ -38,20 +39,21 @@ namespace pfc {
 
     bool string_has_prefix( const char * string, const char * prefix );
     bool string_has_prefix_i( const char * string, const char * prefix );
+	const char * string_skip_prefix_i(const char* string, const char* prefix);
     bool string_has_suffix( const char * string, const char * suffix );
     bool string_has_suffix_i( const char * string, const char * suffix );
 	
-	bool string_is_numeric(const char * p_string,t_size p_length = SIZE_MAX) throw();
-	template<typename char_t> inline bool char_is_numeric(char_t p_char) throw() {return p_char >= '0' && p_char <= '9';}
-	inline bool char_is_hexnumeric(char p_char) throw() {return char_is_numeric(p_char) || (p_char >= 'a' && p_char <= 'f') || (p_char >= 'A' && p_char <= 'F');}
-	inline bool char_is_ascii_alpha_upper(char p_char) throw() {return p_char >= 'A' && p_char <= 'Z';}
-	inline bool char_is_ascii_alpha_lower(char p_char) throw() {return p_char >= 'a' && p_char <= 'z';}
-	inline bool char_is_ascii_alpha(char p_char) throw() {return char_is_ascii_alpha_lower(p_char) || char_is_ascii_alpha_upper(p_char);}
-	inline bool char_is_ascii_alphanumeric(char p_char) throw() {return char_is_ascii_alpha(p_char) || char_is_numeric(p_char);}
+	bool string_is_numeric(const char * p_string,t_size p_length = SIZE_MAX) noexcept;
+	template<typename char_t> inline bool char_is_numeric(char_t p_char) noexcept {return p_char >= '0' && p_char <= '9';}
+	inline bool char_is_hexnumeric(char p_char) noexcept {return char_is_numeric(p_char) || (p_char >= 'a' && p_char <= 'f') || (p_char >= 'A' && p_char <= 'F');}
+	inline bool char_is_ascii_alpha_upper(char p_char) noexcept {return p_char >= 'A' && p_char <= 'Z';}
+	inline bool char_is_ascii_alpha_lower(char p_char) noexcept {return p_char >= 'a' && p_char <= 'z';}
+	inline bool char_is_ascii_alpha(char p_char) noexcept {return char_is_ascii_alpha_lower(p_char) || char_is_ascii_alpha_upper(p_char);}
+	inline bool char_is_ascii_alphanumeric(char p_char) noexcept {return char_is_ascii_alpha(p_char) || char_is_numeric(p_char);}
 	
-	unsigned atoui_ex(const char * ptr,t_size max);
-	t_int64 atoi64_ex(const char * ptr,t_size max);
-	t_uint64 atoui64_ex(const char * ptr,t_size max);
+	unsigned atoui_ex(const char * ptr,t_size max) noexcept;
+	t_int64 atoi64_ex(const char * ptr,t_size max) noexcept;
+	t_uint64 atoui64_ex(const char * ptr,t_size max) noexcept;
 	
 	//Throws exception_invalid_params on failure.
 	unsigned char_to_hex(char c);
@@ -77,57 +79,57 @@ namespace pfc {
 		return ret;
 	}
 
-	t_size strlen_utf8(const char * s,t_size num = SIZE_MAX) throw();//returns number of characters in utf8 string; num - no. of bytes (optional)
-	t_size utf8_char_len(const char * s,t_size max = SIZE_MAX) throw();//returns size of utf8 character pointed by s, in bytes, 0 on error
-	t_size utf8_char_len_from_header(char c) throw();
-	t_size utf8_chars_to_bytes(const char * string,t_size count) throw();
+	t_size strlen_utf8(const char * s,t_size num = SIZE_MAX) noexcept;//returns number of characters in utf8 string; num - no. of bytes (optional)
+	t_size utf8_char_len(const char * s,t_size max = SIZE_MAX) noexcept;//returns size of utf8 character pointed by s, in bytes, 0 on error
+	t_size utf8_char_len_from_header(char c) noexcept;
+	t_size utf8_chars_to_bytes(const char* string, t_size count) noexcept;
 
-	t_size strcpy_utf8_truncate(const char * src,char * out,t_size maxbytes);
+	size_t strcpy_utf8_truncate(const char * src,char * out,size_t maxbytes);
 
 	template<typename char_t> void strcpy_t( char_t * out, const char_t * in ) {
 		for(;;) { char_t c = *in++; *out++ = c; if (c == 0) break; }
 	}
 
-	t_size utf8_decode_char(const char * src,unsigned & out,t_size src_bytes) throw();//returns length in bytes
-	t_size utf8_decode_char(const char * src,unsigned & out) throw();//returns length in bytes
+	t_size utf8_decode_char(const char * src,unsigned & out,t_size src_bytes) noexcept;//returns length in bytes
+	t_size utf8_decode_char(const char * src,unsigned & out) noexcept;//returns length in bytes
 
-	t_size utf8_encode_char(unsigned c,char * out) throw();//returns used length in bytes, max 6
+	t_size utf8_encode_char(unsigned c,char * out) noexcept;//returns used length in bytes, max 6
 
 
-	t_size utf16_decode_char(const char16_t * p_source,unsigned * p_out,t_size p_source_length = SIZE_MAX) throw();
-	t_size utf16_encode_char(unsigned c,char16_t * out) throw();
+	t_size utf16_decode_char(const char16_t * p_source,unsigned * p_out,t_size p_source_length = SIZE_MAX) noexcept;
+	t_size utf16_encode_char(unsigned c,char16_t * out) noexcept;
     
 #ifdef _MSC_VER
-	t_size utf16_decode_char(const wchar_t * p_source,unsigned * p_out,t_size p_source_length = SIZE_MAX) throw();
-	t_size utf16_encode_char(unsigned c,wchar_t * out) throw();
+	t_size utf16_decode_char(const wchar_t * p_source,unsigned * p_out,t_size p_source_length = SIZE_MAX) noexcept;
+	t_size utf16_encode_char(unsigned c,wchar_t * out) noexcept;
 #endif
 
-	t_size wide_decode_char(const wchar_t * p_source,unsigned * p_out,t_size p_source_length = SIZE_MAX) throw();
-	t_size wide_encode_char(unsigned c,wchar_t * out) throw();
+	t_size wide_decode_char(const wchar_t * p_source,unsigned * p_out,t_size p_source_length = SIZE_MAX) noexcept;
+	t_size wide_encode_char(unsigned c,wchar_t * out) noexcept;
 
 
-	t_size strstr_ex(const char * p_string,t_size p_string_len,const char * p_substring,t_size p_substring_len) throw();
+	t_size strstr_ex(const char * p_string,t_size p_string_len,const char * p_substring,t_size p_substring_len) noexcept;
 
 
-	t_size skip_utf8_chars(const char * ptr,t_size count) throw();
+	t_size skip_utf8_chars(const char * ptr,t_size count) noexcept;
 	char * strdup_n(const char * src,t_size len);
 
 	unsigned utf8_get_char(const char * src);
 
-	inline bool utf8_advance(const char * & var) throw() {
+	inline bool utf8_advance(const char * & var) noexcept {
 		t_size delta = utf8_char_len(var);
 		var += delta;
 		return delta>0;
 	}
 
-	inline bool utf8_advance(char * & var) throw() {
+	inline bool utf8_advance(char * & var) noexcept {
 		t_size delta = utf8_char_len(var);
 		var += delta;
 		return delta>0;
 	}
 
-	inline const char * utf8_char_next(const char * src) throw() {return src + utf8_char_len(src);}
-	inline char * utf8_char_next(char * src) throw() {return src + utf8_char_len(src);}
+	inline const char * utf8_char_next(const char * src) noexcept {return src + utf8_char_len(src);}
+	inline char * utf8_char_next(char * src) noexcept {return src + utf8_char_len(src);}
 
 	template<t_size max_length>
 	class string_fixed_t : public pfc::string_base {
@@ -220,7 +222,7 @@ namespace pfc {
 	string8 string_directory(const char * p_path);
 
 	void float_to_string(char * out,t_size out_max,double val,unsigned precision,bool force_sign = false);//doesnt add E+X etc, has internal range limits, useful for storing float numbers as strings without having to bother with international coma/dot settings BS
-	double string_to_float(const char * src,t_size len = SIZE_MAX);
+	double string_to_float(const char * src,t_size len = SIZE_MAX) noexcept;
 
 	string8 format_float(double p_val,unsigned p_width = 0,unsigned p_prec = 7);
 

@@ -1,15 +1,22 @@
 ﻿#include "pfc-lite.h"
 
-#ifdef _WIN32 // Windows-only code for now
-
 #include "string-conv-lite.h"
 #include "string_conv.h"
 #include "SmartStrStr.h"
 #include <algorithm>
+#include "SmartStrStr-table.h"
+#include "SmartStrStr-twoCharMappings.h"
 
 SmartStrStr::SmartStrStr() {
 	std::map<uint32_t, std::set<uint32_t> > substitutions;
 	std::map<uint32_t, uint32_t > downconvert;
+
+#if 1
+	for (auto& walk : SmartStrStrTable) {
+		downconvert[walk.from] = walk.to;
+		substitutions[walk.from].insert(walk.to);
+	}
+#else
 	for (uint32_t walk = 128; walk < 0x10000; ++walk) {
 		uint32_t c = Transform(walk);
 		if (c != walk) {
@@ -17,6 +24,8 @@ SmartStrStr::SmartStrStr() {
 			substitutions[walk].insert(c);
 		}
 	}
+#endif
+
 	for (uint32_t walk = 32; walk < 0x10000; ++walk) {
 		auto lo = ToLower(walk);
 		if (lo != walk) {
@@ -34,7 +43,7 @@ SmartStrStr::SmartStrStr() {
 	InitTwoCharMappings();
 }
 
-
+#ifdef _WIN32
 const wchar_t * SmartStrStr::matchHereW(const wchar_t * pString, const wchar_t * pUserString) const {
 	auto walkData = pString;
 	auto walkUser = pUserString;
@@ -72,6 +81,7 @@ const wchar_t * SmartStrStr::matchHereW(const wchar_t * pString, const wchar_t *
 		walkUser += dUser;
 	}
 }
+#endif // _WIN32
 
 bool SmartStrStr::equals(const char * pString, const char * pUserString) const {
 	auto p = matchHere(pString, pUserString);
@@ -133,6 +143,7 @@ const char * SmartStrStr::strStrEnd(const char * pString, const char * pSubStrin
 	}
 }
 
+#ifdef _WIN32
 const wchar_t * SmartStrStr::strStrEndW(const wchar_t * pString, const wchar_t * pSubString, size_t * outFoundAt) const {
 	size_t walk = 0;
 	for (;; ) {
@@ -149,6 +160,7 @@ const wchar_t * SmartStrStr::strStrEndW(const wchar_t * pString, const wchar_t *
 		walk += delta;
 	}
 }
+#endif // _WIN32
 
 bool SmartStrStr::matchOneChar(uint32_t cInput, uint32_t cData) const {
 	if (cInput == cData) return true;
@@ -181,6 +193,7 @@ void SmartStrStr::transformStrHere(pfc::string8& out, const char* in) const {
 	}
 }
 
+#if 0 // Windows specific code
 uint32_t SmartStrStr::Transform(uint32_t c) {
 	wchar_t wide[2] = {}; char out[4] = {};
 	pfc::utf16_encode_char(c, wide);
@@ -194,19 +207,24 @@ uint32_t SmartStrStr::Transform(uint32_t c) {
 	}
 	return c;
 }
+#endif
 
 uint32_t SmartStrStr::ToLower(uint32_t c) {
 	return pfc::charLower(c);
 }
 
+#if 0
+// UNREALIBLE!
+// It's 2022 and compilers still break Unicode at random without warnings
 static std::map<uint32_t, const char* > makeTwoCharMappings() {
 	std::map<uint32_t, const char* > twoCharMappings;
 	auto ImportTwoCharMappings = [&](const wchar_t* list, const char* replacement) {
 		PFC_ASSERT(strlen(replacement) == 2);
 		for (const wchar_t* ptr = list; ; ) {
-			wchar_t c = *ptr++;
+			unsigned c = *ptr++;
 			if (c == 0) break;
 			twoCharMappings[(uint32_t)c] = replacement;
+			// pfc::outputDebugLine(pfc::format("{0x", pfc::format_hex(c,4), ", \"", replacement, "\"},"));
 		}
 	};
 
@@ -228,6 +246,15 @@ static std::map<uint32_t, const char* > makeTwoCharMappings() {
 
 	return twoCharMappings;
 }
+#else
+static std::map<uint32_t, const char*> makeTwoCharMappings() {
+	std::map<uint32_t, const char* > ret;
+	for (auto& walk : twoCharMappings) {
+		ret[walk.from] = walk.to;
+	}
+	return ret;
+}
+#endif
 
 
 void SmartStrStr::InitTwoCharMappings() {
@@ -298,5 +325,3 @@ bool SmartStrFilter::test(const char* src) const {
 	}
 	return true;
 }
-
-#endif // _WIN32

@@ -33,9 +33,10 @@ namespace pfc {
 	bool permutation_is_valid(t_size const * order, t_size count) {
 		bit_array_bittable found(count);
 		for(t_size walk = 0; walk < count; ++walk) {
-			if (order[walk] >= count) return false;
-			if (found[walk]) return false;
-			found.set(walk,true);
+            const size_t v = order[walk];
+            if (v >= count) return false;
+			if (found[v]) return false;
+			found.set(v,true);
 		}
 		return true;
 	}
@@ -44,11 +45,11 @@ namespace pfc {
 	}
 
 	t_size permutation_find_reverse(t_size const * order, t_size count, t_size value) {
-		if (value >= count) return ~0;
+		if (value >= count) return SIZE_MAX;
 		for(t_size walk = 0; walk < count; ++walk) {
 			if (order[walk] == value) return walk;
 		}
-		return ~0;
+		return SIZE_MAX;
 	}
     
     void create_move_item_permutation( size_t * order, size_t count, size_t from, size_t to ) {
@@ -258,7 +259,7 @@ void pfc::myassert(const char * _Message, const char *_File, unsigned _Line)
 #endif
 
 
-t_uint64 pfc::pow_int(t_uint64 base, t_uint64 exp) {
+t_uint64 pfc::pow_int(t_uint64 base, t_uint64 exp) noexcept {
 	t_uint64 mul = base;
 	t_uint64 val = 1;
 	t_uint64 mask = 1;
@@ -273,7 +274,7 @@ t_uint64 pfc::pow_int(t_uint64 base, t_uint64 exp) {
 	return val;
 }
 
-double pfc::exp_int( const double base, const int expS ) {
+double pfc::exp_int( const double base, const int expS ) noexcept {
     //    return pow(base, (double)v);
     
     bool neg;
@@ -364,6 +365,21 @@ namespace pfc {
             m_ptr = ptr;
         }
         m_size = s;
+    }
+
+    void* alignedAlloc( size_t s, size_t alignBytes ) {
+        void * ptr;
+#ifdef _MSC_VER
+        ptr = _aligned_malloc(s, alignBytes);
+        throw std::bad_alloc();
+#else
+#ifdef __ANDROID__
+        if ((ptr = memalign( alignBytes, s )) == NULL) throw std::bad_alloc();
+#else
+        if (posix_memalign( &ptr, alignBytes, s ) < 0) throw std::bad_alloc();
+#endif
+#endif
+        return ptr;
     }
  
     void alignedFree( void * ptr ) {

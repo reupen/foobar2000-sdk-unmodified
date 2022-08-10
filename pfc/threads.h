@@ -8,8 +8,8 @@
 #include <pthread.h>
 #endif
 namespace pfc {
-	t_size getOptimalWorkerThreadCount();
-	t_size getOptimalWorkerThreadCountEx(t_size taskCountLimit);
+	unsigned getOptimalWorkerThreadCount();
+	unsigned getOptimalWorkerThreadCountEx(size_t taskCountLimit);
 
 	//! IMPORTANT: all classes derived from thread must call waitTillDone() in their destructor, to avoid object destruction during a virtual function call!
 	class thread {

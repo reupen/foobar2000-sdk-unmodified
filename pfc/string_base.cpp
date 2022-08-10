@@ -291,7 +291,7 @@ void float_to_string(char * out,t_size out_max,double val,unsigned precision,boo
 
 
     
-static double pfc_string_to_float_internal(const char * src)
+static double pfc_string_to_float_internal(const char * src) noexcept
 {
 	bool neg = false;
 	t_int64 val = 0;
@@ -327,10 +327,17 @@ static double pfc_string_to_float_internal(const char * src)
 		else break;
 	}
 	if (neg) val = -val;
+
+	if (val != 0) {
+		// SPECIAL FIX: ensure 0.2 and 0.200000 return the EXACT same float
+		while (val % 10 == 0) {
+			val /= 10; ++div;
+		}
+	}
     return (double) val * exp_int(10, div);
 }
 
-double string_to_float(const char * src,t_size max) {
+double string_to_float(const char * src,t_size max) noexcept {
 	//old function wants an oldstyle nullterminated string, and i don't currently care enough to rewrite it as it works appropriately otherwise
 	char blargh[128];
 	if (max > 127) max = 127;
@@ -373,7 +380,7 @@ void convert_to_lower_ascii(const char * src,t_size max,char * out,char replace)
 	*out = 0;
 }
 
-t_size strstr_ex(const char * p_string,t_size p_string_len,const char * p_substring,t_size p_substring_len) throw()
+t_size strstr_ex(const char * p_string,t_size p_string_len,const char * p_substring,t_size p_substring_len) noexcept
 {
 	p_string_len = strlen_max(p_string,p_string_len);
 	p_substring_len = strlen_max(p_substring,p_substring_len);
@@ -388,7 +395,7 @@ t_size strstr_ex(const char * p_string,t_size p_string_len,const char * p_substr
 	return SIZE_MAX;
 }
 
-unsigned atoui_ex(const char * p_string,t_size p_string_len)
+unsigned atoui_ex(const char * p_string,t_size p_string_len) noexcept
 {
 	unsigned ret = 0; t_size ptr = 0;
 	while(ptr<p_string_len)
@@ -401,7 +408,7 @@ unsigned atoui_ex(const char * p_string,t_size p_string_len)
 	return ret;
 }
 
-int strcmp_nc(const char* p1, size_t n1, const char * p2, size_t n2) throw() {
+int strcmp_nc(const char* p1, size_t n1, const char * p2, size_t n2) noexcept {
 	t_size idx = 0;
 	for(;;)
 	{
@@ -417,13 +424,13 @@ int strcmp_nc(const char* p1, size_t n1, const char * p2, size_t n2) throw() {
 	}
 }
 
-int strcmp_ex(const char* p1,t_size n1,const char* p2,t_size n2) throw()
+int strcmp_ex(const char* p1,t_size n1,const char* p2,t_size n2) noexcept
 {
 	n1 = strlen_max(p1,n1); n2 = strlen_max(p2,n2);
 	return strcmp_nc(p1, n1, p2, n2);
 }
 
-t_uint64 atoui64_ex(const char * src,t_size len) {
+t_uint64 atoui64_ex(const char * src,t_size len) noexcept {
 	len = strlen_max(src,len);
 	t_uint64 ret = 0, mul = 1;
 	t_size ptr = len;
@@ -448,7 +455,7 @@ t_uint64 atoui64_ex(const char * src,t_size len) {
 }
 
 
-t_int64 atoi64_ex(const char * src,t_size len)
+t_int64 atoi64_ex(const char * src,t_size len) noexcept
 {
 	len = strlen_max(src,len);
 	t_int64 ret = 0, mul = 1;
@@ -769,7 +776,7 @@ t_size string_find_first_nc(const char * p_string,t_size p_string_length,const c
 }
 
 
-bool string_is_numeric(const char * p_string,t_size p_length) throw() {
+bool string_is_numeric(const char * p_string,t_size p_length) noexcept {
 	bool retval = false;
 	for(t_size walk = 0; walk < p_length && p_string[walk] != 0; walk++) {
 		if (!char_is_numeric(p_string[walk])) {retval = false; break;}
@@ -1101,7 +1108,7 @@ uint32_t charUpper(uint32_t param)
 }
 
 
-bool stringEqualsI_ascii(const char * p1,const char * p2) throw() {
+bool stringEqualsI_ascii(const char * p1,const char * p2) noexcept {
 	for(;;)
 	{
 		char c1 = *p1;
@@ -1117,7 +1124,7 @@ bool stringEqualsI_ascii(const char * p1,const char * p2) throw() {
 	}
 }
 
-bool stringEqualsI_utf8(const char * p1,const char * p2) throw()
+bool stringEqualsI_utf8(const char * p1,const char * p2) noexcept
 {
 	for(;;)
 	{
@@ -1163,19 +1170,22 @@ void string_base::fix_dir_separator(char c) {
             if (string[w] != c) return false;
         }
     }
+	const char* string_skip_prefix_i(const char* string, const char* prefix) {
+		const char* p1 = string; const char* p2 = prefix;
+		for (;;) {
+			unsigned w1, w2; size_t d1, d2;
+			d1 = utf8_decode_char(p1, w1);
+			d2 = utf8_decode_char(p2, w2);
+			if (d2 == 0) return p1;
+			if (d1 == 0) return nullptr;
+			if (w1 != w2) {
+				if (charLower(w1) != charLower(w2)) return nullptr;
+			}
+			p1 += d1; p2 += d2;
+		}
+	}
     bool string_has_prefix_i( const char * string, const char * prefix ) {
-        const char * p1 = string; const char * p2 = prefix;
-        for(;;) {
-            unsigned w1, w2; size_t d1, d2;
-            d1 = utf8_decode_char(p1, w1);
-            d2 = utf8_decode_char(p2, w2);
-            if (d2 == 0) return true;
-            if (d1 == 0) return false;
-            if (w1 != w2) {
-                if (charLower(w1) != charLower(w2)) return false;
-            }
-            p1 += d1; p2 += d2;
-        }
+		return string_skip_prefix_i(string, prefix) != nullptr;
     }
     bool string_has_suffix( const char * string, const char * suffix ) {
         size_t len = strlen( string );

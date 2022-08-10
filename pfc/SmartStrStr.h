@@ -21,10 +21,14 @@ public:
 
 	//! Returns ptr to the end of the string if positive (for continuing search), nullptr if negative.
 	const char * strStrEnd(const char * pString, const char * pSubString, size_t * outFoundAt = nullptr) const;
+#ifdef _WIN32
 	const wchar_t * strStrEndW(const wchar_t * pString, const wchar_t * pSubString, size_t * outFoundAt = nullptr) const;
+#endif
 	//! Returns ptr to the end of the string if positive (for continuing search), nullptr if negative.
 	const char * matchHere(const char * pString, const char * pUserString) const;
+#ifdef _WIN32
 	const wchar_t * matchHereW( const wchar_t * pString, const wchar_t * pUserString) const;
+#endif
 
 	//! String-equals tool, compares strings rather than searching for occurance
 	bool equals( const char * pString, const char * pUserString) const;

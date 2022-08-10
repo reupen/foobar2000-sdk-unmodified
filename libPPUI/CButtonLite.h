@@ -2,8 +2,9 @@
 
 #include <functional>
 #include <vsstyle.h>
-#include "WTL-PP.h"
+#include "wtl-pp.h"
 #include "win32_op.h"
+#include "DarkMode.h"
 
 typedef CWinTraits<WS_CHILD|WS_TABSTOP,0> CButtonLiteTraits;
 
@@ -29,7 +30,7 @@ public:
 	END_MSG_MAP()
 	std::function<void () > ClickHandler;
 
-	unsigned Measure() {
+	unsigned Measure() const {
 		auto font = myGetFont();
 		LOGFONT lf;
 		WIN32_OP_D(font.GetLogFont(lf));
@@ -88,7 +89,7 @@ protected:
 	HFONT OnGetFont() {
 		return m_font;
 	}
-	LRESULT OnGetDlgCode(UINT, WPARAM wp, LPARAM lp) {
+	LRESULT OnGetDlgCode(UINT, WPARAM wp, LPARAM) {
 		if ( wp == VK_TAB && TabCycleHandler != NULL) {
 			if ( WantTabCheck == NULL || WantTabCheck(m_hWnd) ) {
 				TabCycleHandler( m_hWnd );
@@ -97,9 +98,10 @@ protected:
 		}
 		SetMsgHandled(FALSE); return 0;
 	}
-	void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags) {
+	void OnChar(UINT, UINT, UINT) {
 	}
 	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
+		(void)nRepCnt; (void)nFlags;
 		switch(nChar) {
 		case VK_SPACE:
 		case VK_RETURN:
@@ -107,6 +109,7 @@ protected:
 		}
 	}
 	void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags) {
+		(void)nRepCnt; (void)nFlags;
 		switch(nChar) {
 		case VK_SPACE:
 		case VK_RETURN:
@@ -115,13 +118,13 @@ protected:
 			break;
 		}
 	}
-	void OnSetFocus(CWindow wndOld) {
+	void OnSetFocus(CWindow) {
 		m_focused = true; Invalidate();
 	}
-	void OnKillFocus(CWindow wndFocus) {
+	void OnKillFocus(CWindow) {
 		m_focused = false; Invalidate();
 	}
-	CFontHandle myGetFont() {
+	CFontHandle myGetFont() const {
 		auto f = GetFont();
 		if ( f == NULL ) f = (HFONT) GetStockObject(DEFAULT_GUI_FONT);
 		return f;
@@ -131,8 +134,24 @@ protected:
 		if (lf.lfWeight > 1000 ) lf.lfWeight = 1000;
 	}
 
+	CWindow GetCtlColorTarget() {
+		CWindow target = WndCtlColorTarget;
+		if (target == NULL) target = GetParent();
+		return target;
+	}
 	virtual void DrawBackground( CDCHandle dc, CRect rcClient ) {
-		HBRUSH brush = NULL;
+		{
+			HBRUSH brush = NULL;
+			if (CtlColorHandler) {
+				brush = CtlColorHandler(dc);
+			} else {
+				brush = (HBRUSH)GetCtlColorTarget().SendMessage(WM_CTLCOLORBTN, (WPARAM)dc.m_hDC, (LPARAM)this->m_hWnd);
+			}
+			if (brush != NULL) {
+				dc.FillRect(rcClient, brush);
+				dc.SetBkMode(TRANSPARENT);
+			}
+		}
 		if ( IsPressed() ) {
 			CTheme theme;
 			if (theme.OpenThemeData(*this, L"BUTTON" )) {
@@ -147,16 +166,6 @@ protected:
 			} else {
 				DrawFrameControl(dc, rcClient, DFC_BUTTON, DFCS_HOT);
 			}
-		} else if ( CtlColorHandler ) {
-			brush = CtlColorHandler( dc );
-		} else {
-			CWindow target = WndCtlColorTarget;
-			if ( target == NULL ) target = GetParent();
-			brush = (HBRUSH) target.SendMessage(WM_CTLCOLORBTN, (WPARAM) dc.m_hDC, (LPARAM) this->m_hWnd );
-		}
-		if ( brush != NULL ) {
-			dc.FillRect( rcClient, brush );
-			dc.SetBkMode( TRANSPARENT );
 		}
 	}
 
@@ -183,9 +192,9 @@ protected:
 
 		pdc.SetBkMode( TRANSPARENT );
 		if ( !IsWindowEnabled() ) {
-			pdc.SetTextColor( ::GetSysColor(COLOR_GRAYTEXT) );
+			pdc.SetTextColor( DarkMode::GetSysColor(COLOR_GRAYTEXT) );
 		} else if ( m_focused ) {
-			pdc.SetTextColor( ::GetSysColor(COLOR_HIGHLIGHT) );
+			pdc.SetTextColor( DarkMode::GetSysColor(COLOR_HIGHLIGHT) );
 		}
 		pdc.DrawText( m_textDrawMe, m_textDrawMe.GetLength(), &rcClient, DT_VCENTER | DT_CENTER | DT_SINGLELINE | DT_NOPREFIX );
 
@@ -201,10 +210,11 @@ protected:
 	bool IsPressed() {return m_pressed; }
 private:
 	int OnCreate(LPCREATESTRUCT lpCreateStruct) {
+		DarkMode::ApplyDarkThemeCtrl(*this, DarkMode::IsDialogDark(GetCtlColorTarget(), WM_CTLCOLORBTN));
 		if ( lpCreateStruct->lpszName != nullptr ) this->m_textDrawMe = lpCreateStruct->lpszName;
 		SetMsgHandled(FALSE); return 0;
 	}
-	void OnEnable(BOOL bEnable) {
+	void OnEnable(BOOL) {
 		Invalidate(); SetMsgHandled(FALSE);
 	}
 	void ToggleHot( bool bHot ) {
@@ -212,13 +222,13 @@ private:
 			m_hot = bHot; Invalidate();
 		}
 	}
-	void OnMouseMove(UINT nFlags, CPoint point) {
+	void OnMouseMove(UINT nFlags, CPoint) {
 		const DWORD maskButtons = MK_LBUTTON | MK_RBUTTON | MK_MBUTTON | MK_XBUTTON1 | MK_XBUTTON2;
 		if ((nFlags & maskButtons) != 0) return;
 		ToggleHot(true);
 		TrackMouseLeave();
 	}
-	void OnLButtonDown(UINT nFlags, CPoint point) {
+	void OnLButtonDown(UINT nFlags, CPoint) {
 		const DWORD maskButtons = MK_LBUTTON | MK_RBUTTON | MK_MBUTTON | MK_XBUTTON1 | MK_XBUTTON2;
 		if ( ( nFlags & maskButtons ) != MK_LBUTTON ) return;
 		TogglePressed( true );

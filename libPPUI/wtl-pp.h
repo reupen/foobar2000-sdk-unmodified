@@ -20,7 +20,7 @@ private:
 
 class NoRedrawScopeEx {
 public:
-	NoRedrawScopeEx(HWND p_wnd) throw() : m_wnd(p_wnd), m_active() {
+	NoRedrawScopeEx(HWND p_wnd) throw() : m_wnd(p_wnd) {
 		if (m_wnd.IsWindowVisible()) {
 			m_active = true;
 			m_wnd.SetRedraw(FALSE);
@@ -32,11 +32,54 @@ public:
 			m_wnd.RedrawWindow(NULL,NULL,RDW_INVALIDATE|RDW_ERASE|RDW_ALLCHILDREN);
 		}
 	}
+	NoRedrawScopeEx(const NoRedrawScopeEx&) = delete;
+	void operator=(const NoRedrawScopeEx&) = delete;
 private:
-	bool m_active;
+	bool m_active = false;
 	CWindow m_wnd;
 };
 
+class NoRedrawControl {
+public:
+	CWindow m_wnd;
+
+	void operator++() {
+		m_count++;
+		if (m_wnd.IsWindowVisible()) {
+			m_active = true;
+			m_wnd.SetRedraw(FALSE);
+		}
+	}
+	void operator--() {
+		if (--m_count == 0 && m_active) {
+			m_wnd.SetRedraw(TRUE);
+			m_wnd.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+			m_active = false;
+		}
+	}
+	int m_count = 0;
+	bool m_active = false;
+
+	NoRedrawControl(HWND wnd = NULL) : m_wnd(wnd) {}
+	void operator=(const NoRedrawControl&) = delete;
+	NoRedrawControl(const NoRedrawControl&) = delete;
+};
+
+LRESULT RelayEraseBkgnd(HWND p_from, HWND p_to, HDC p_dc);
+void InjectParentEraseHandler(HWND);
+void InjectParentCtlColorHandler(HWND);
+
+#define MSG_WM_ERASEBKGND_PARENT() \
+	if (uMsg == WM_ERASEBKGND) { \
+		lResult = ::RelayEraseBkgnd(hWnd, ::GetParent(hWnd), (HDC)wParam); \
+		return TRUE; \
+	}
+
+#define MSG_WM_ERASEBKGND_TO(wndTarget) \
+	if (uMsg == WM_ERASEBKGND) { \
+		lResult = ::RelayEraseBkgnd(hWnd, wndTarget, (HDC)wParam); \
+		return TRUE; \
+	}
 
 #define MSG_WM_TIMER_EX(timerId, func) \
 	if (uMsg == WM_TIMER && (UINT_PTR)wParam == timerId) \
@@ -187,6 +230,7 @@ private:
 		SetMsgHandled(FALSE);
 	}
 	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
+		(void)nRepCnt;
 		m_suppressChar = 0;
 		m_suppressScanCode = 0;
 		if (HandleCtrlA) {
@@ -466,9 +510,4 @@ typedef CSRWlock CSRWorCS;
 #endif
 
 
-template<typename TBase> class CContainedWindowSimpleT : public CContainedWindowT<TBase>, public CMessageMap {
-public:
-	CContainedWindowSimpleT() : CContainedWindowT<TBase>(this) {}
-	BEGIN_MSG_MAP(CContainedWindowSimpleT)
-	END_MSG_MAP()
-};
+#include "CContainedWindowSimple.h"

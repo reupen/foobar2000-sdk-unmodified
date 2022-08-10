@@ -58,7 +58,7 @@ namespace PP {
 			COM_QI_ENTRY(IEnumString)
 		COM_QI_END()
 
-		HRESULT STDMETHODCALLTYPE Next(ULONG celt, LPOLESTR *rgelt, ULONG *pceltFetched) {
+		HRESULT STDMETHODCALLTYPE Next(ULONG celt, LPOLESTR *rgelt, ULONG *pceltFetched) override {
 			if (rgelt == NULL) return E_INVALIDARG;
 			ULONG done = 0;
 			while (done < celt && m_walk.is_valid()) {
@@ -76,7 +76,7 @@ namespace PP {
 			return out;
 		}
 
-		HRESULT STDMETHODCALLTYPE Skip(ULONG celt) {
+		HRESULT STDMETHODCALLTYPE Skip(ULONG celt) override {
 			while (celt > 0) {
 				if (m_walk.is_empty()) return S_FALSE;
 				--celt; ++m_walk;
@@ -84,12 +84,12 @@ namespace PP {
 			return S_OK;
 		}
 
-		HRESULT STDMETHODCALLTYPE Reset() {
+		HRESULT STDMETHODCALLTYPE Reset() override {
 			m_walk = m_shared->first();
 			return S_OK;
 		}
 
-		HRESULT STDMETHODCALLTYPE Clone(IEnumString **ppenum) {
+		HRESULT STDMETHODCALLTYPE Clone(IEnumString **ppenum) override {
 			*ppenum = new TImpl(*this); return S_OK;
 		}
 	private:

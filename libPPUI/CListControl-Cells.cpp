@@ -6,6 +6,7 @@
 #include "GDIUtils.h"
 #include <vsstyle.h>
 #include "InPlaceEdit.h"
+#include "DarkMode.h"
 
 #define PRETEND_CLASSIC_THEME 0
 
@@ -109,12 +110,17 @@ bool CListCell::ApplyTextStyle( LOGFONT & font, double scale, uint32_t ) {
 void CListCell_Text::DrawContent( DrawContentArg_t const & arg ) {
 	const auto fgWas = arg.dc.GetTextColor();
 	CDCHandle dc = arg.dc;
-	if (arg.cellState & cellState_disabled) {
-		dc.SetTextColor(GetSysColor(COLOR_GRAYTEXT));
+	if ((arg.cellState & cellState_disabled) != 0 && arg.allowColors) {
+		dc.SetTextColor(DarkMode::GetSysColor(COLOR_GRAYTEXT, arg.darkMode));
 	}
 	
-	
 	CRect clip = arg.rcText;
+
+	if (arg.imageRenderer && clip.Width() > clip.Height() ) {
+		CRect rcImage = clip; rcImage.right = rcImage.left + clip.Height();
+		arg.imageRenderer(dc, rcImage);
+		clip.left = rcImage.right;
+	}
 
 	const t_uint32 format = PaintUtils::DrawText_TranslateHeaderAlignment(arg.hdrFormat);
 	dc.DrawText( arg.text, (int)wcslen(arg.text), clip, format | DT_NOPREFIX | DT_END_ELLIPSIS | DT_SINGLELINE | DT_VCENTER  );
@@ -257,6 +263,13 @@ void CListCell_Checkbox::DrawContent( DrawContentArg_t const & arg ) {
 		if (arg.cellState & cellState_disabled) {
 			dc.SetTextColor(GetSysColor(COLOR_GRAYTEXT));
 		}
+
+		if (arg.imageRenderer && rcText.Width() > rcText.Height()) {
+			CRect rcImage = rcText; rcImage.right = rcImage.left + rcImage.Height();
+			arg.imageRenderer(dc, rcImage);
+			rcText.left = rcImage.right;
+		}
+
 		dc.DrawText(arg.text, (int) wcslen(arg.text), rcText, DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_LEFT);
 	} else {
 		RenderCheckbox(arg.theme, dc, arg.subItemRect, arg.cellState, m_radio );
