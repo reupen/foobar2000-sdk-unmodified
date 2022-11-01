@@ -638,6 +638,64 @@ namespace {
 			}
 		}
 
+		bool m_notifyItemDraw = false;
+
+		UINT GetItemCDState(size_t which) const {
+			UINT ret = 0;
+			DWORD state = GetItemState(which);
+			if (state & LVIS_FOCUSED) ret |= CDIS_FOCUS;
+			if (state & LVIS_SELECTED) ret |= CDIS_SELECTED;
+			return ret;
+		}
+
+		void RenderRect(const CRect& p_rect, CDCHandle p_dc) override {
+			NMCUSTOMDRAW cd = { setupHdr(NM_CUSTOMDRAW) };
+			cd.dwDrawStage = CDDS_PREPAINT;
+			cd.hdc = p_dc;
+			cd.rc = p_rect;
+			cd.dwItemSpec = UINT32_MAX;
+			cd.uItemState = 0;
+			cd.lItemlParam = 0;
+			LRESULT status = sendNotify(&cd);
+			m_notifyItemDraw = (status & CDRF_NOTIFYITEMDRAW) != 0;
+
+			if ((status & CDRF_SKIPDEFAULT) != 0) {
+				return;
+			}
+			__super::RenderRect(p_rect, p_dc);
+
+			cd.dwDrawStage = CDDS_POSTPAINT;
+			sendNotify(&cd);
+		}
+		void RenderItem(t_size item, const CRect& itemRect, const CRect& updateRect, CDCHandle dc) override {
+			NMCUSTOMDRAW cd = {};
+			if (m_notifyItemDraw) {
+				cd = { setupHdr(NM_CUSTOMDRAW) };
+				cd.dwDrawStage = CDDS_ITEMPREPAINT;
+				cd.hdc = dc;
+				cd.rc = itemRect;
+				cd.dwItemSpec = (DWORD)item;
+				cd.uItemState = GetItemCDState(item);
+				cd.lItemlParam = GetItemParam(item);
+				LRESULT status = sendNotify(&cd);
+				if (status & CDRF_SKIPDEFAULT) return;
+			}
+			
+			__super::RenderItem(item, itemRect, updateRect, dc);
+
+
+			if (m_notifyItemDraw) {
+				cd.dwDrawStage = CDDS_ITEMPOSTPAINT;
+				sendNotify(&cd);
+			}
+		}
+#if 0
+		void RenderSubItemText(t_size item, t_size subItem, const CRect& subItemRect, const CRect& updateRect, CDCHandle dc, bool allowColors) override {
+
+			__super::RenderSubItemText(item, subItem, subItemRect, updateRect, dc, allowColors);
+		}
+#endif
+
 	};
 
 	class CListControl_ListViewOwnerData : public CListControl_ListViewBase {
