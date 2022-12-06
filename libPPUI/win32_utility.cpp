@@ -251,6 +251,8 @@ static void GetOSVersionStringAppend(pfc::string_base & out) {
 		out << " IA64"; break;
 	case PROCESSOR_ARCHITECTURE_INTEL:
 		out << " x86"; break;
+	case PROCESSOR_ARCHITECTURE_ARM64:
+		out << " ARM64"; break;
 	}
 }
 

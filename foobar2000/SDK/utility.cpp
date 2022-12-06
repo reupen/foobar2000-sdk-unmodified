@@ -183,6 +183,12 @@ namespace fb2k {
 // library_callbacks.h functionality
 #include "library_callbacks.h"
 
+bool library_callback::is_modified_from_hook() {
+	auto api = library_manager_v5::tryGet();
+	if (api.is_valid()) return api->library_status(library_manager_v5::status_current_callback_from_hook, 0, nullptr, 0) != 0;
+	else return false;
+}
+
 void library_callback_dynamic::register_callback() {
 	library_manager_v3::get()->register_callback(this);
 }

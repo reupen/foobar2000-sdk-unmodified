@@ -6,6 +6,10 @@
 
 #define ATLASSERT_SUCCESS(X) {auto RetVal = (X); ATLASSERT( RetVal ); }
 
+#ifdef SubclassWindow // mitigate windowsx.h clash
+#undef SubclassWindow
+#endif
+
 class NoRedrawScope {
 public:
 	NoRedrawScope(HWND p_wnd) throw() : m_wnd(p_wnd) {

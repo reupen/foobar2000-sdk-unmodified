@@ -1957,6 +1957,7 @@ void filesystem::list_directory_(const char* path, list_callback_t f, unsigned l
 			directory_callback_to_lambda cb;
 			cb.f = f;
 			v2->list_directory_ex(path, cb, listMode, a);
+			return;
 		}
 	}
 

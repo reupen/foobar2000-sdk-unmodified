@@ -14,6 +14,10 @@ public:
 	//! The list is sorted by pointer value for convenient matching by binary search.
 	virtual void on_items_modified(metadb_handle_list_cref items) = 0;
 
+	//! Is current on_items_modified() cycle called due to actual tags changed or dispaly hook operations? \n
+	//! Supported since foobar2000 v2.0 beta 13
+	static bool is_modified_from_hook();
+
 	FB2K_MAKE_SERVICE_INTERFACE_ENTRYPOINT(library_callback);
 };
 

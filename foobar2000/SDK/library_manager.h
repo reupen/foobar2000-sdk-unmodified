@@ -106,6 +106,17 @@ public:
 	FB2K_MAKE_SERVICE_COREAPI_EXTENSION(library_manager_v4, library_manager_v3);
 };
 
+//! \since 2.0 beta 13
+class NOVTABLE library_manager_v5 : public library_manager_v4 {
+	FB2K_MAKE_SERVICE_COREAPI_EXTENSION(library_manager_v5, library_manager_v4);
+public:
+	//! foobar2000 v2.0 late addition: let callbacks know if the current notification comes from actual changed tags or a display hook operation. Returns 1 or 0 for true or false.
+	static const GUID status_current_callback_from_hook;
+
+	//! Extensible status query method. Returns 0 for unrecognized commands.
+	virtual size_t library_status(const GUID& arg, size_t arg1, void* arg2, size_t arg2bytes) = 0;
+};
+
 //! Implement this service to appear on "library viewers" list in Media Library preferences page.\n
 //! Use library_viewer_factory_t to register.
 class NOVTABLE library_viewer : public service_base {

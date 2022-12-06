@@ -100,8 +100,5 @@ namespace DarkMode {
 
 		void flushMoveToBack();
 		std::list<HWND> m_lstMoveToBack;
-	};
-	void SubclassDialog(HWND);
-	void SubclassTabCtrl(HWND);
-	void SubclassComboBox(HWND);
+	}; 
 }

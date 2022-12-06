@@ -397,5 +397,11 @@
     <ClInclude Include="foobar2000-lite+atl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="notifyList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dsp_dialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

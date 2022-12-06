@@ -86,7 +86,7 @@ const char * charReplaceModern(char c) {
 	case ':':
 		return u8"∶";
 	case '/':
-		return u8"/";
+		return u8"\u2215";
 	case '\\':
 		return u8"⧵";
 	case '?':

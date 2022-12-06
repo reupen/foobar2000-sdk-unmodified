@@ -1247,9 +1247,6 @@ LRESULT CListControlImpl::OnGetDlgCode(UINT, WPARAM wp, LPARAM) {
 }
 
 HWND CListControlImpl::CreateInDialog(CWindow wndDialog, UINT replaceControlID, CWindow lstReplace) {
-	// No longer used
-	// SetDarkMode(DarkMode::IsDialogDark(wndDialog, WM_CTLCOLORLISTBOX));
-
 	PFC_ASSERT(lstReplace != NULL);
 	auto status = lstReplace.SendMessage(WM_GETDLGCODE, VK_RETURN);
 	m_dlgWantEnter = (status & DLGC_WANTMESSAGE);

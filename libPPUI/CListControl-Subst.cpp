@@ -5,6 +5,7 @@
 #include <pfc/string-conv-lite.h>
 #include "ImplementOnFinalMessage.h"
 #include "CListControl-Cells.h"
+#include "windowLifetime.h"
 
 #define I_IMAGEREALLYNONE (-3)
 
@@ -138,6 +139,7 @@ namespace {
 				}
 			}
 
+			PFC_ASSERT(this->GetHeaderCtrl().GetItemCount() == (int)this->GetColumnCount());
 
 			if (idx != this->GetColumnCount()) {
 				PFC_ASSERT(!"Arbitrary column insert not implemented, please add columns in order");
@@ -151,6 +153,8 @@ namespace {
 				format = col->fmt & LVCFMT_JUSTIFYMASK;
 			}
 			this->AddColumn(label, width, format);
+
+			PFC_ASSERT(this->GetHeaderCtrl().GetItemCount() == (int)this->GetColumnCount());
 
 			return idx;
 		}
@@ -1138,15 +1142,28 @@ HWND CListControl_ReplaceListView(HWND wndReplace) {
 	if (style & LVS_REPORT) {
 		const auto ctrlID = src.GetDlgCtrlID();
 		CWindow parent = src.GetParent();
+		DWORD headerStyle = 0;
+		if ((style & LVS_NOCOLUMNHEADER) == 0) {
+			auto header = src.GetHeader(); 
+			if (header) { 
+				headerStyle = header.GetStyle(); 
+			}
+		}
 		if (style & LVS_OWNERDATA) {
-			auto obj = new ImplementOnFinalMessage< CListControl_ListViewOwnerData>(style);
+			auto obj = PP::newWindowObj<CListControl_ListViewOwnerData>(style);
 			ret = obj->CreateInDialog(parent, ctrlID, src);
 			PFC_ASSERT(ret != NULL);
+			if (headerStyle != 0 && obj->GetHeaderCtrl() == NULL) {
+				obj->InitializeHeaderCtrl((headerStyle&(HDS_FULLDRAG | HDS_BUTTONS)));
+			}
 		} else {
 			PFC_ASSERT(src.GetItemCount() == 0); // transferring of items not yet implemented
-			auto obj = new ImplementOnFinalMessage<CListControl_ListView>(style);
+			auto obj = PP::newWindowObj<CListControl_ListView>(style);
 			ret = obj->CreateInDialog(parent, ctrlID, src);
 			PFC_ASSERT(ret != NULL);
+			if (headerStyle != 0 && obj->GetHeaderCtrl() == NULL) {
+				obj->InitializeHeaderCtrl((headerStyle & (HDS_FULLDRAG | HDS_BUTTONS)));
+			}
 		}
 	}
 	return ret;
@@ -1470,7 +1487,7 @@ HWND CListControl_ReplaceListBox(HWND wndReplace) {
 		PFC_ASSERT(src.GetCount() == 0); // transferring of items not yet implemented
 		const auto ctrlID = src.GetDlgCtrlID();
 		CWindow parent = src.GetParent();
-		auto obj = new ImplementOnFinalMessage<CListControl_ListBox>(style);
+		auto obj = PP::newWindowObj<CListControl_ListBox>(style);
 		ret = obj->CreateInDialog(parent, ctrlID, src);
 	}
 	return ret;

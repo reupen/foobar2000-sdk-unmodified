@@ -9,6 +9,8 @@
 #define _atoi64 atoll
 #endif
 
+static constexpr char info_WAVEFORMATEXTENSIBLE_CHANNEL_MASK[] = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK";
+
 const float replaygain_info::peak_invalid = -1;
 const float replaygain_info::gain_invalid = -1000;
 
@@ -613,26 +615,48 @@ void file_info::info_set_channels_ex(uint32_t channels, uint32_t mask) {
 	info_set_wfx_chanMask(mask);
 }
 
+static bool parse_wfx_chanMask(const char* str, uint32_t& out) {
+	try {
+		if (pfc::strcmp_partial(str, "0x") != 0) return false;
+		out = pfc::atohex<uint32_t>(str + 2, strlen(str + 2));
+		return true;
+	} catch (...) { return false; }
+}
+
+void file_info::info_tidy_channels() {
+	const char * info = this->info_get(info_WAVEFORMATEXTENSIBLE_CHANNEL_MASK);
+	if (info != nullptr) {
+		bool keep = false;
+		uint32_t v;
+		if (parse_wfx_chanMask(info, v)) {
+			if (v != 0 && v != 3 && v != 4) {
+				// valid, not mono, not stereo
+				keep = true;
+			}
+		}
+		if (!keep) this->info_remove(info_WAVEFORMATEXTENSIBLE_CHANNEL_MASK);
+	}
+}
+
 void file_info::info_set_wfx_chanMask(uint32_t val) {
 	switch(val) {
 	case 0:
 	case 4:
 	case 3:
-		this->info_remove("WAVEFORMATEXTENSIBLE_CHANNEL_MASK");
+		this->info_remove(info_WAVEFORMATEXTENSIBLE_CHANNEL_MASK);
 		break;
 	default:
-		info_set ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK", pfc::format("0x", pfc::format_hex(val) ) );
+		info_set (info_WAVEFORMATEXTENSIBLE_CHANNEL_MASK, pfc::format("0x", pfc::format_hex(val) ) );
 		break;
 	}
 }
 
 uint32_t file_info::info_get_wfx_chanMask() const {
-	const char * str = this->info_get("WAVEFORMATEXTENSIBLE_CHANNEL_MASK");
+	const char * str = this->info_get(info_WAVEFORMATEXTENSIBLE_CHANNEL_MASK);
 	if (str == NULL) return 0;
-	if (pfc::strcmp_partial( str, "0x") != 0) return 0;
-	try {
-		return pfc::atohex<uint32_t>( str + 2, strlen(str+2) );
-	} catch(...) { return 0;}
+	uint32_t ret;
+	if (parse_wfx_chanMask(str, ret)) return ret;
+	return 0;
 }
 
 bool file_info::field_is_person(const char * fieldName) {

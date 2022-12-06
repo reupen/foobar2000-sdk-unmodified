@@ -18,8 +18,8 @@ namespace pfc {
 		mem_block const & operator=( const mem_block & other ) { copy(other); return *this; }
 		mem_block const & operator=( mem_block && other ) noexcept { move(other); return *this; }
 
-		void set_data_fromptr(const void* p, size_t size) {
-			resize(size); memcpy(ptr(), p, size);
+		void set(const void* ptr, size_t size) {set_data_fromptr(ptr, size); }
+		void set_data_fromptr(const void* p, size_t size) { resize(size); memcpy(ptr(), p, size); 
 		}
 		void append_fromptr(const void* p, size_t size) {
 			const size_t base = this->size();
