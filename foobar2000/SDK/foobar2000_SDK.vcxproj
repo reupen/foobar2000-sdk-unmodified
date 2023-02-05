@@ -354,6 +354,7 @@
     <ClInclude Include="audio_chunk_impl.h" />
     <ClInclude Include="audio_postprocessor.h" />
     <ClInclude Include="autoplaylist.h" />
+    <ClInclude Include="callback_merit.h" />
     <ClInclude Include="cfg_var.h" />
     <ClInclude Include="cfg_var_legacy.h" />
     <ClInclude Include="chapterizer.h" />

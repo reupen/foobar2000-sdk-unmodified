@@ -581,30 +581,34 @@ bool CListControlImpl::PrepLayoutCache(CPoint& ptOrigin, size_t indexLo, size_t 
 	// Always walk 2*clientHeight, with area above and below
 	int yMax = -1, yBase = 0;
 	size_t baseItem = 0, endItem = SIZE_MAX;
-	if (indexLo == SIZE_MAX) {
-		yBase = pfc::max_t<int>(ptOrigin.y - clientHeight / 2, 0);
-		yMax = yBase + clientHeight * 2;
-		baseItem = pfc::min_t<size_t>(this->IndexFromPointAbs(yBase), count - 1);
-	} else {
-		auto itemHeight = GetItemHeight();
-		size_t extraItems = (size_t)(clientHeight / itemHeight);
-#if PrepLayoutCache_Debug
-		PFC_DEBUGLOG << "PrepLayoutCache: clientHeight=" << clientHeight << " itemHeight=" << itemHeight << " extraItems=" << extraItems;
-#endif
-		if (indexLo < extraItems) baseItem = 0;
-		else baseItem = indexLo - extraItems;
 
-		if (indexHi == SIZE_MAX) {
-			endItem = baseItem + extraItems;
+	if (!m_greedyGroupLayout) {
+		if (indexLo == SIZE_MAX) {
+			yBase = pfc::max_t<int>(ptOrigin.y - clientHeight / 2, 0);
+			yMax = yBase + clientHeight * 2;
+			baseItem = pfc::min_t<size_t>(this->IndexFromPointAbs(yBase), count - 1);
 		} else {
-			endItem = indexHi + extraItems;
-		}
-		if (endItem > count) endItem = count;
+			auto itemHeight = GetItemHeight();
+			size_t extraItems = (size_t)(clientHeight / itemHeight);
+#if PrepLayoutCache_Debug
+			PFC_DEBUGLOG << "PrepLayoutCache: clientHeight=" << clientHeight << " itemHeight=" << itemHeight << " extraItems=" << extraItems;
+#endif
+			if (indexLo < extraItems) baseItem = 0;
+			else baseItem = indexLo - extraItems;
+
+			if (indexHi == SIZE_MAX) {
+				endItem = baseItem + extraItems;
+			} else {
+				endItem = indexHi + extraItems;
+			}
+			if (endItem > count) endItem = count;
 
 #if PrepLayoutCache_Debug
-		PFC_DEBUGLOG << "PrepLayoutCache: baseItem=" << baseItem << " endItem=" << endItem;
+			PFC_DEBUGLOG << "PrepLayoutCache: baseItem=" << baseItem << " endItem=" << endItem;
 #endif
+		}
 	}
+
 
 
 

@@ -403,5 +403,14 @@
     <ClInclude Include="dsp_dialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="readWriteLock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="callback_merit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fb2kWorkerTool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

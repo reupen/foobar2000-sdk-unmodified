@@ -1,16 +1,18 @@
 #pragma once
 #include "audio_chunk.h"
+#include <functional>
 
 //! Structure containing ReplayGain scan results from some playable object, also providing various helper methods to manipulate those results.
 struct replaygain_info
 {
-	float m_album_gain,m_track_gain;
-	float m_album_peak,m_track_peak;
+	static constexpr float peak_invalid = -1, gain_invalid = -1000;
+
+	float m_album_gain = gain_invalid, m_track_gain = gain_invalid;
+	float m_album_peak = peak_invalid, m_track_peak = peak_invalid;
 
 	enum {text_buffer_size = 16 };
 	typedef char t_text_buffer[text_buffer_size];
 
-	static const float peak_invalid, gain_invalid;
 
 	static bool g_format_gain(float p_value,char p_buffer[text_buffer_size]);
 	static bool g_format_peak(float p_value,char p_buffer[text_buffer_size]);
@@ -156,6 +158,8 @@ public:
 	bool			meta_format(const char * p_name,pfc::string_base & p_out, const char * separator = ", ") const;
 	void			meta_format_entry(t_size index, pfc::string_base & p_out, const char * separator = ", ") const;//same as meta_format but takes index instead of meta name.
 	
+	typedef std::function<void(const char*, const char*)> meta_enumerate_t;
+	void			meta_enumerate(meta_enumerate_t) const;
 	
 	bool			info_exists_ex(const char * p_name,t_size p_name_length) const;
 	void			info_remove_index(t_size p_index);
@@ -163,15 +167,15 @@ public:
 	bool			info_remove_ex(const char * p_name,t_size p_name_length);
 	const char *	info_get_ex(const char * p_name,t_size p_name_length) const;
 
-	inline t_size		meta_find(const char * p_name) const	{return meta_find_ex(p_name,SIZE_MAX);}
-	inline bool			meta_exists(const char * p_name) const		{return meta_exists_ex(p_name,SIZE_MAX);}
-	inline void			meta_remove_field(const char * p_name)		{meta_remove_field_ex(p_name,SIZE_MAX);}
-	inline t_size		meta_set(const char * p_name,const char * p_value)		{return meta_set_ex(p_name,SIZE_MAX,p_value,SIZE_MAX);}
+	inline t_size		meta_find(const char* p_name) const { PFC_ASSERT(p_name != nullptr); return meta_find_ex(p_name, SIZE_MAX); }
+	inline bool			meta_exists(const char* p_name) const { PFC_ASSERT(p_name != nullptr); return meta_exists_ex(p_name, SIZE_MAX); }
+	inline void			meta_remove_field(const char* p_name) { PFC_ASSERT(p_name != nullptr); meta_remove_field_ex(p_name, SIZE_MAX); }
+	inline t_size		meta_set(const char* p_name, const char* p_value) { PFC_ASSERT(p_name != nullptr && p_value != nullptr); return meta_set_ex(p_name, SIZE_MAX, p_value, SIZE_MAX); }
 	inline void			meta_insert_value(t_size p_index,t_size p_value_index,const char * p_value) {meta_insert_value_ex(p_index,p_value_index,p_value,SIZE_MAX);}
 	inline void			meta_add_value(t_size p_index,const char * p_value)	{meta_add_value_ex(p_index,p_value,SIZE_MAX);}
-	inline const char*	meta_get(const char * p_name,t_size p_index) const	{return meta_get_ex(p_name,SIZE_MAX,p_index);}
-	inline t_size		meta_get_count_by_name(const char * p_name) const		{return meta_get_count_by_name_ex(p_name,SIZE_MAX);}
-	inline t_size		meta_add(const char * p_name,const char * p_value)		{return meta_add_ex(p_name,SIZE_MAX,p_value,SIZE_MAX);}
+	inline const char* meta_get(const char* p_name, t_size p_index) const { PFC_ASSERT(p_name != nullptr); return meta_get_ex(p_name, SIZE_MAX, p_index); }
+	inline t_size		meta_get_count_by_name(const char* p_name) const { PFC_ASSERT(p_name != nullptr); return meta_get_count_by_name_ex(p_name, SIZE_MAX); }
+	inline t_size		meta_add(const char* p_name, const char* p_value) { PFC_ASSERT(p_name != nullptr && p_value != nullptr); return meta_add_ex(p_name, SIZE_MAX, p_value, SIZE_MAX); }
 	inline void			meta_modify_value(t_size p_index,t_size p_value_index,const char * p_value) {meta_modify_value_ex(p_index,p_value_index,p_value,SIZE_MAX);}
 
 	

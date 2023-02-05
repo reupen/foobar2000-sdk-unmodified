@@ -20,5 +20,6 @@ public:
 	};
 
 	//! @returns list of metadb_handles. Safe to use arr->as_list_of<metadb_handle>() to get a pfc::list_base_const_t<metadb_handle_ptr>
+	//! @param flags Optional; set flag_sort to sort output.
 	virtual fb2k::arrayRef search(search_filter::ptr pattern, uint32_t flags, abort_callback& abort) = 0;
 };

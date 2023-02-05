@@ -293,3 +293,47 @@ void search_filter_v2::test_multi_here(metadb_handle_list& ref, abort_callback& 
 	this->test_multi_ex(ref, mask.get_ptr(), abort);
 	ref.filter_mask(mask.get_ptr());
 }
+
+
+
+// core_api.h
+
+namespace fb2k {
+	bool isDebugModeActive() {
+#if PFC_DEBUG
+		return true;
+#else
+		auto api = fb2k::configStore::tryGet();
+		if (api.is_empty()) return false;
+		return api->getConfigBool("core.debugMode");
+#endif
+	}
+
+	static bool _isLowMemModeActive() {
+		auto api = fb2k::configStore::tryGet();
+		if (api.is_empty()) return false;
+		return api->getConfigBool("core.lowMemMode");
+	}
+
+#if FB2K_SUPPORT_LOW_MEM_MODE
+	bool isLowMemModeActive() {
+		static bool cached = _isLowMemModeActive();
+		return cached;
+	}
+#endif
+}
+
+// callback_merit.h
+namespace fb2k {
+	callback_merit_t callback_merit_of(service_ptr obj) {
+		{
+			callback_with_merit::ptr q;
+			if (q &= obj) return q->get_callback_merit();
+		}
+		{
+			metadb_io_callback_v2::ptr q;
+			if (q &= obj) return q->get_callback_merit();
+		}
+		return callback_merit_default;
+	}
+}

@@ -310,8 +310,10 @@ namespace pfc {
 namespace pfc {
 
 
-	void stringToUpperAppend(string_base & p_out, const char * p_source, t_size p_sourceLen);
-	void stringToLowerAppend(string_base & p_out, const char * p_source, t_size p_sourceLen);
+	void stringToUpperAppend(string_base & p_out, const char * p_source, t_size p_sourceLen = SIZE_MAX);
+	void stringToLowerAppend(string_base & p_out, const char * p_source, t_size p_sourceLen = SIZE_MAX);
+	void stringToUpperHere(string_base& p_out, const char* p_source, t_size p_sourceLen = SIZE_MAX);
+	void stringToLowerHere(string_base& p_out, const char* p_source, t_size p_sourceLen = SIZE_MAX);
 	t_uint32 charLower(t_uint32 param);
 	t_uint32 charUpper(t_uint32 param);
 	char ascii_tolower_lookup(char c);

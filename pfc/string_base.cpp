@@ -902,6 +902,15 @@ string8 format_time_ex(double p_seconds,unsigned p_extra) {
 	return ret;
 }
 
+void stringToUpperHere(string_base& p_out, const char* p_source, t_size p_sourceLen) {
+	p_out.clear();
+	stringToUpperAppend(p_out, p_source, p_sourceLen);
+}
+void stringToLowerHere(string_base& p_out, const char* p_source, t_size p_sourceLen) {
+	p_out.clear();
+	stringToLowerAppend(p_out, p_source, p_sourceLen);
+}
+
 void stringToUpperAppend(string_base & out, const char * src, t_size len) {
 	while(len && *src) {
 		unsigned c; t_size d;
