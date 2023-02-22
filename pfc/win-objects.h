@@ -168,7 +168,7 @@ namespace pfc {
 
 	class event : public win32_event {
 	public:
-		event() { create(true, false); }
+		event(bool initial = false) { create(true, initial); }
 
 		HANDLE get_handle() const { return win32_event::get(); }
 	};

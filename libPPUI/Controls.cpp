@@ -11,6 +11,7 @@ void CSeparator::OnPaint(CDCHandle dc) {
 	PaintUtils::PaintSeparatorControl(*this);
 }
 
+#if 0 // BROKEN WITH DARK MODE, DO NOT USE
 CStaticMainInstruction::CStaticMainInstruction() { 
 	SetThemePart(TEXT_MAININSTRUCTION); 
 }
@@ -48,3 +49,4 @@ void CStaticThemed::OnPaint(CDCHandle) {
 		PFC_ASSERT(SUCCEEDED(retval));
 	}
 }
+#endif

@@ -352,6 +352,7 @@
     <ClInclude Include="CPropVariant.h" />
     <ClInclude Include="CWindowCreateAndDelete.h" />
     <ClInclude Include="CDialogResizeHelper.h" />
+    <ClInclude Include="DarkMode-CHyperLink.h" />
     <ClInclude Include="DarkMode.h" />
     <ClInclude Include="DarkModeEx.h" />
     <ClInclude Include="gdi-types-portable.h" />

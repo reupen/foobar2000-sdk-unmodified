@@ -965,7 +965,8 @@ namespace DarkMode {
 				const DWORD uiState = (DWORD)SendMessage(WM_QUERYUISTATE);
 
 				
-				const bool bPressed = (ctrlState & BST_CHECKED) != 0;
+				const bool bChecked = (ctrlState & BST_CHECKED) != 0;
+				const bool bMixed = (ctrlState & BST_INDETERMINATE) != 0;
 				const bool bHot = (ctrlState & BST_HOT) != 0;
 				const bool bFocus = (ctrlState & BST_FOCUS) != 0 && (uiState & UISF_HIDEFOCUS) == 0;
 
@@ -977,11 +978,17 @@ namespace DarkMode {
 				if (theme != NULL && IsThemePartDefined(theme, part, 0)) {
 					int state = 0;
 					if (bDisabled) {
-						state = bPressed ? CBS_CHECKEDDISABLED : CBS_UNCHECKEDDISABLED;
+						if ( bChecked ) state = CBS_CHECKEDDISABLED;
+						else if ( bMixed ) state = CBS_MIXEDDISABLED;
+						else state = CBS_UNCHECKEDDISABLED;
 					} else if (bHot) {
-						state = bPressed ? CBS_CHECKEDHOT : CBS_UNCHECKEDHOT;
+						if ( bChecked ) state = CBS_CHECKEDHOT;
+						else if ( bMixed ) state = CBS_MIXEDHOT;
+						else state = CBS_UNCHECKEDNORMAL;
 					} else {
-						state = bPressed ? CBS_CHECKEDNORMAL : CBS_UNCHECKEDNORMAL;
+						if ( bChecked ) state = CBS_CHECKEDNORMAL;
+						else if ( bMixed ) state = CBS_MIXEDNORMAL;
+						else state = CBS_UNCHECKEDNORMAL;
 					}
 
 					CSize size;
@@ -1001,7 +1008,8 @@ namespace DarkMode {
 				if (theme != NULL) CloseThemeData(theme);
 				if (!bDrawn) {
 					int stateEx = bRadio ? DFCS_BUTTONRADIO : DFCS_BUTTONCHECK;
-					if (bPressed) stateEx |= DFCS_CHECKED;
+					if (bChecked) stateEx |= DFCS_CHECKED;
+					// FIX ME bMixed ?
 					if (bDisabled) stateEx |= DFCS_INACTIVE;
 					else if (bHot) stateEx |= DFCS_HOT;
 
@@ -1490,7 +1498,7 @@ namespace DarkMode {
 		CButton btn(wnd);
 		auto style = btn.GetButtonStyle();
 		auto type = style & BS_TYPEMASK;
-		if ((type == BS_CHECKBOX || type == BS_AUTOCHECKBOX || type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON) && (style & BS_PUSHLIKE) == 0) {
+		if ((type == BS_CHECKBOX || type == BS_AUTOCHECKBOX || type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON || type == BS_3STATE || type == BS_AUTO3STATE) && (style & BS_PUSHLIKE) == 0) {
 			// MS checkbox implementation is terminally retarded and won't draw text in correct color
 			// Subclass it and draw our own content
 			// Other button types seem OK
