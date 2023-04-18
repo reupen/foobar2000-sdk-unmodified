@@ -421,6 +421,43 @@ namespace pfc {
 		}
 #endif
 	}
+	pfc::string8 format_window(HWND wnd) {
+		pfc::string_formatter ret;
+		ret << "0x" << format_hex( (size_t)wnd );
+		auto title = getWindowText(wnd);
+		if (title.length() > 0) {
+			ret << " [" << title << "]";
+		}
+		return ret;
+	}
+
+#define _(X) {X, #X}
+	struct winStyle_t {
+		DWORD v; const char * n;
+	};
+	static const winStyle_t winStyles[] = {
+		_(WS_POPUP), _(WS_CHILD), _(WS_MINIMIZE), _(WS_VISIBLE),
+		_(WS_DISABLED), _(WS_CLIPSIBLINGS), _(WS_CLIPCHILDREN), _(WS_MAXIMIZE),
+		_(WS_BORDER), _(WS_DLGFRAME), _(WS_VSCROLL), _(WS_HSCROLL),
+		_(WS_SYSMENU), _(WS_THICKFRAME), _(WS_GROUP), _(WS_TABSTOP),
+		_(WS_MINIMIZEBOX), _(WS_MAXIMIZEBOX)
+	};
+
+	pfc::string8 format_windowStyle(DWORD style) {
+		pfc::string_formatter ret;
+		ret << "0x" << format_hex( style, 8 );
+		if (style != 0) {
+			pfc::string_formatter label;
+			for (auto& s : winStyles) if (style & s.v) {
+				if ( label.length() > 0 ) label << "|";
+				label << s.n;
+			}
+			if (label.length() > 0) {
+				ret << " [" << label << "]";
+			}
+		}
+		return ret;
+	}
 }
 
 #else

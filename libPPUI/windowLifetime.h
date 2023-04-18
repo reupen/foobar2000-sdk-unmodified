@@ -1,5 +1,6 @@
 #pragma once
 #include "ImplementOnFinalMessage.h"
+#include "win32_op.h"
 #include <functional>
 
 namespace PP {
@@ -15,6 +16,7 @@ namespace PP {
 	//! OnFinalMessage() is automatically overridden to delete the window subclass object.
 	template<typename obj_t, typename ... arg_t>
 	obj_t* subclassThisWindow(HWND wnd, arg_t && ... arg) {
+		PFC_ASSERT( wnd != NULL );
 		auto ret = newWindowObj<obj_t>(std::forward<arg_t>(arg) ...);
 		WIN32_OP_D(ret->SubclassWindow(wnd));
 		return ret;

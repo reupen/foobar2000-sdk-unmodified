@@ -31,6 +31,9 @@ namespace DarkMode {
 	// Can be used with NOTIFY_CODE_HANDLER() directly
 	LRESULT OnCustomDraw(int, NMHDR*, BOOL & bHandled);
 
+	// Handle WM_NCPAINT drawing dark frame
+	void NCPaintDarkFrame(HWND ctrl, HRGN rgn);
+
 	bool IsHighContrast();
 
 	// msgSetDarkMode

@@ -574,7 +574,7 @@ bool CListControlImpl::PrepLayoutCache(CPoint& ptOrigin, size_t indexLo, size_t 
 #if PrepLayoutCache_Debug
 	PFC_DEBUGLOG << "PrepLayoutCache entry";
 	PFC_DEBUGLOG << "PrepLayoutCache: count=" << count << " knownGroups=" << this->m_groupHeaders.size();
-	PFC_DEBUGLOG << "PrepLayoutCache: indexLo=" << indexLo << " indexHi=" << indexHi;
+	PFC_DEBUGLOG << "PrepLayoutCache: indexLo=" << pfc::format_index(indexLo) << " indexHi=" << pfc::format_index(indexHi);
 #endif
 	const int clientHeight = pfc::max_t<int>(this->GetClientRectHook().Height(), 100);
 
@@ -638,7 +638,7 @@ bool CListControlImpl::PrepLayoutCache(CPoint& ptOrigin, size_t indexLo, size_t 
 	PFC_DEBUGLOG << "PrepLayoutCache: baseItem=" << baseItem;
 #endif
 	
-	size_t anchorIdx = this->IndexFromPointAbs(ptOrigin.y);
+	size_t anchorIdx = m_greedyGroupLayout ? SIZE_MAX : this->IndexFromPointAbs(ptOrigin.y);
 	int anchorDelta = 0;
 	bool anchorIsFirstInGroup = IsItemFirstInGroupCached(anchorIdx);
 	if (anchorIdx != SIZE_MAX) {
@@ -646,7 +646,7 @@ bool CListControlImpl::PrepLayoutCache(CPoint& ptOrigin, size_t indexLo, size_t 
 	}
 
 #if PrepLayoutCache_Debug
-	PFC_DEBUGLOG << "PrepLayoutCache: anchorIdx=" << anchorIdx << " anchorDelta=" << anchorDelta << " anchorIsFirstInGroup=" << anchorIsFirstInGroup;
+	PFC_DEBUGLOG << "PrepLayoutCache: anchorIdx=" << pfc::format_index(anchorIdx) << " anchorDelta=" << anchorDelta << " anchorIsFirstInGroup=" << anchorIsFirstInGroup;
 #endif
 
 	bool bChanged = false;

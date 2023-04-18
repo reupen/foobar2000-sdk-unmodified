@@ -1444,7 +1444,7 @@ void CListControlWithSelectionBase::RunDragDrop(const CPoint & p_origin, bool p_
 	}
 
 	pfc::com_ptr_t<CDropSourceImpl> source = new CDropSourceImpl();
-	source->wndOrigin = *this;
+	source->wndOrigin = m_hWnd;
 	source->allowDragOutside = true;
 	source->allowReorder = (flags & dragDrop_reorder) != 0;
 
@@ -1474,7 +1474,7 @@ bool CListControlWithSelectionBase::RunReorderDragDrop(CPoint ptOrigin, CPoint &
 	pfc::com_ptr_t<CDropSourceImpl> source = new CDropSourceImpl();
 	pfc::com_ptr_t<CDropTargetImpl> target = new CDropTargetImpl();
 	
-	source->wndOrigin = *this;
+	source->wndOrigin = m_hWnd;
 	source->allowDragOutside = false;
 	source->allowReorder = true;
 
@@ -1537,9 +1537,11 @@ int CListControlWithSelectionBase::OnCreatePassThru(LPCREATESTRUCT) {
 		};
 		target->HookLeave = [this] {
 			this->ClearDropMark();
+			this->ToggleDDScroll(false);
 		};
 
 		target->Track = [this, dda](CPoint pt) {
+			this->ToggleDDScroll(true);
 			if ( dda->showDropMark ) {
 				WIN32_OP_D(this->ScreenToClient(&pt));
 				size_t idx = this->InsertIndexFromPoint(pt);

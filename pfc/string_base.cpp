@@ -960,6 +960,29 @@ string8 format_file_size_short(uint64_t size, uint64_t * outUsedScale) {
 	return ret;
 }
 
+pfc::string8 format_index(size_t idx) {
+	return idx == SIZE_MAX ? "<n/a>" : pfc::format_uint(idx);
+}
+
+pfc::string8 format_permutation(const size_t* arg, size_t n) {
+	pfc::string_formatter ret;
+	for( size_t walk = 0; walk < n; ++ walk ) {
+		if (arg[walk] != walk) {
+			if ( !ret.is_empty() ) ret << ", ";
+			ret << arg[walk] << "->" << walk;
+		}
+	}
+	return ret;
+}
+pfc::string8 format_mask(pfc::bit_array const& mask, size_t n) {
+	pfc::string_formatter ret;
+	mask.for_each(true, 0, n, [&] (size_t idx) {
+		if (!ret.is_empty() ) ret << ", ";
+		ret << n;
+		});
+	return ret;
+}
+
 bool string_base::truncate_eol(t_size start)
 {
 	const char * ptr = get_ptr() + start;

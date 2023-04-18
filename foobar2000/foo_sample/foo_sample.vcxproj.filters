@@ -94,5 +94,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="readme.txt" />
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
