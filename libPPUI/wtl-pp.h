@@ -127,14 +127,14 @@ void InjectParentCtlColorHandler(HWND);
 	}
 
 
-
+// Obsolete, use CImageListManaged instead
 class CImageListContainer : public CImageList {
 public:
 	CImageListContainer() {}
 	~CImageListContainer() {Destroy();}
-private:
-	const CImageListContainer & operator=(const CImageListContainer&);
-	CImageListContainer(const CImageListContainer&);
+
+	void operator=(const CImageListContainer&) = delete;
+	CImageListContainer(const CImageListContainer&) = delete;
 };
 
 
@@ -194,31 +194,7 @@ public:
 
 	END_MSG_MAP()
 
-	static void DeleteLastWord( CEdit wnd ) {
-		if ( wnd.GetWindowLong(GWL_STYLE) & ES_READONLY ) return;
-		CString buffer;
-		if ( wnd.GetWindowText(buffer) <= 0 ) return;
-		const int len = buffer.GetLength();
-		int selStart = len, selEnd = len;
-		wnd.GetSel(selStart, selEnd);
-		if ( selStart < 0 || selStart > len ) selStart = len; // sanity
-		if ( selEnd < selStart ) selEnd = selStart; // sanity
-		int work = selStart;
-		if ( work == selEnd ) {
-			// Only do our stuff if there is nothing yet selected. Otherwise first delete selection.
-
-			if ( work > 0 && isSpecial(buffer[work-1])) {
-				do --work; while( work > 0 && isSpecial(buffer[work-1]));
-			} else {
-				while( work > 0 && isWordDelimiter(buffer[work-1]) ) --work;
-				while( work > 0 && (!isWordDelimiter(buffer[work-1]) && !isSpecial(buffer[work-1]))) --work;
-			}
-		}
-		if ( selEnd > work ) {
-			wnd.SetSel(work, selEnd, TRUE );
-			wnd.ReplaceSel( TEXT(""), TRUE );
-		}
-	}
+	static void DeleteLastWord( CEdit wnd, bool bForward = false );
 private:
 	static bool isSpecial( wchar_t c ) {
 		return (unsigned) c < ' ';
@@ -251,6 +227,12 @@ private:
 				if (GetHotkeyModifierFlags() == MOD_CONTROL) {
 					m_suppressScanCode = nFlags & 0xFF;
 					DeleteLastWord( *this ) ; return;
+				}
+			}
+			if ( nChar == VK_DELETE ) {
+				if (GetHotkeyModifierFlags() == MOD_CONTROL) {
+					m_suppressScanCode = nFlags & 0xFF;
+					DeleteLastWord( *this, true ) ; return;
 				}
 			}
 			if ( nChar == VK_RETURN && onEnterKey ) {

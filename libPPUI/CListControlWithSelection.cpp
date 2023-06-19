@@ -1109,14 +1109,31 @@ bool CListControlWithSelectionBase::GetFocusRectAbs(CRect & p_rect) {
 	return false;
 }
 
+bool CListControlWithSelectionBase::GetContextMenuPoint2(CPoint& ptInOut) {
+	CPoint ptInvalid(-1,-1);
+	if (ptInOut == ptInvalid) {
+		ptInOut = GetContextMenuPointDefault();
+		return ptInOut != ptInvalid;
+	} else {
+		CRect rc = this->GetClientRectHook();
+		WIN32_OP_D( ClientToScreen(rc) );
+		return !!rc.PtInRect(ptInOut);
+	}
+}
+
+CPoint CListControlWithSelectionBase::GetContextMenuPointDefault() {
+	CRect rect;
+	if (!GetFocusRectAbs(rect)) return CPoint(-1,-1);
+	EnsureVisibleRectAbs(rect);
+	CPoint pt = rect.CenterPoint() - GetViewOffset();
+	ClientToScreen(&pt);
+	return pt;
+}
+
 CPoint CListControlWithSelectionBase::GetContextMenuPoint(CPoint ptGot) {
 	CPoint pt;
 	if (ptGot.x == -1 && ptGot.y == -1) {
-		CRect rect;
-		if (!GetFocusRectAbs(rect)) return 0;
-		EnsureVisibleRectAbs(rect);
-		pt = rect.CenterPoint() - GetViewOffset();
-		ClientToScreen(&pt);
+		pt = GetContextMenuPointDefault();
 	} else {
 		pt = ptGot;
 	}
@@ -1126,11 +1143,7 @@ CPoint CListControlWithSelectionBase::GetContextMenuPoint(CPoint ptGot) {
 CPoint CListControlWithSelectionBase::GetContextMenuPoint(LPARAM lp) {
 	CPoint pt;
 	if (lp == -1) {
-		CRect rect;
-		if (!GetFocusRectAbs(rect)) return 0;
-		EnsureVisibleRectAbs(rect);
-		pt = rect.CenterPoint() - GetViewOffset();
-		ClientToScreen(&pt);
+		pt = GetContextMenuPointDefault();
 	} else {
 		pt = lp;
 	}

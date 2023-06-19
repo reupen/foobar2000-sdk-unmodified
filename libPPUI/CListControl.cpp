@@ -518,7 +518,7 @@ void CListControlImpl::MinGroupHeight2ChangedForGroup(groupID_t groupID, bool re
 void CListControlImpl::UpdateGroupOverlayByID(groupID_t groupID, int xFrom, int xTo) {
 	t_size base, count;
 	if (GetItemRangeAbs(GetVisibleRectAbs(), base, count)) {
-		bool on = false; // Have to walk whole range - there may be multiple groups with the same ID because fuck you
+		bool on = false; // Have to walk whole range - there may be multiple groups with the same ID
 		for (size_t walk = 0; walk < count; ++walk) {
 			bool test = (groupID == GetItemGroup(base + walk));
 			if (test && !on) {

@@ -65,6 +65,9 @@ Set text/bk colors explicitly
 Text color: 0xdedede
 Background: 0x191919
 
+Label-editing:
+Pass WM_CTLCOLOR* to parent, shim TVM_EDITLABEL to pass theme to the editbox (not really necessary tho)
+
 
 == Rebar ==
 Can be beaten into working to some extent with a combination of:
@@ -122,7 +125,6 @@ But the latter doesn't require undocumented function calls and doesn't infect al
 */
 
 namespace {
-	// 1903 18362
 	enum class PreferredAppMode
 	{
 		Default,
@@ -172,7 +174,7 @@ namespace {
 	};
 #if DARKMODE_ALLOW_HAX
 	using fnAllowDarkModeForWindow = bool (WINAPI*)(HWND hWnd, bool allow); // ordinal 133
-	using fnSetPreferredAppMode = PreferredAppMode(WINAPI*)(PreferredAppMode appMode); // ordinal 135, in 1903
+	using fnSetPreferredAppMode = PreferredAppMode(WINAPI*)(PreferredAppMode appMode); // ordinal 135, since 1809
 	using fnFlushMenuThemes = void (WINAPI*)(); // ordinal 136
 	fnAllowDarkModeForWindow _AllowDarkModeForWindow = nullptr;
 	fnSetPreferredAppMode _SetPreferredAppMode = nullptr;
@@ -182,7 +184,7 @@ namespace {
 
 	void InitImports() {
 		if (ImportsInited) return;
-		if (IsWindows10OrGreater()) {
+		if (DarkMode::IsSupportedSystem()) {
 			HMODULE hUxtheme = LoadLibraryEx(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
 			if (hUxtheme) {
 				_AllowDarkModeForWindow = reinterpret_cast<fnAllowDarkModeForWindow>(GetProcAddress(hUxtheme, MAKEINTRESOURCEA(133)));
@@ -205,8 +207,7 @@ namespace DarkMode {
 		return val;
 	}
 	bool IsSupportedSystem() {
-		static bool ret = IsWindows10OrGreater();
-		return ret;
+		return Win10BuildNumber() >= 17763; // require at least Win10 1809 / Server 2019
 	}
 	bool IsWindows11() {
 		return Win10BuildNumber() >= 22000;
@@ -581,6 +582,56 @@ namespace DarkMode {
 			if (m_hWnd != NULL) Invalidate();
 		}
 
+		class CTreeViewHook : public CWindowImpl<CTreeViewHook, CTreeViewCtrl> {
+			bool m_dark;
+		public:
+			CTreeViewHook(bool v) : m_dark(v) {}
+
+			BEGIN_MSG_MAP_EX(CTreeViewHook)
+				MESSAGE_RANGE_HANDLER_EX(WM_CTLCOLORMSGBOX, WM_CTLCOLORSTATIC, OnCtlColor)
+				MESSAGE_HANDLER_EX(msgSetDarkMode(), OnSetDarkMode)
+				MESSAGE_HANDLER_EX(TVM_EDITLABEL, OnEditLabel)
+			END_MSG_MAP()
+
+			LRESULT OnCtlColor(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+				return GetParent().SendMessage(uMsg, wParam, lParam);
+			}
+			LRESULT OnEditLabel(UINT, WPARAM, LPARAM) {
+				LRESULT ret = DefWindowProc();
+				if (ret != 0) {
+					HWND edit = (HWND) ret;
+					PFC_ASSERT( ::IsWindow(edit) );
+					ApplyDarkThemeCtrl( edit, m_dark );
+				}
+				return ret;
+			}
+			void SetDark(bool v) { 
+				if (m_dark == v) return;
+				m_dark = v;
+				ApplyDark();
+			}
+			void ApplyDark() {
+				ApplyDarkThemeCtrl(m_hWnd, m_dark);
+				COLORREF bk = m_dark ? GetSysColor(COLOR_WINDOW) : (COLORREF)(-1);
+				COLORREF tx = m_dark ? GetSysColor(COLOR_WINDOWTEXT) : (COLORREF)(-1);
+				this->SetTextColor(tx); this->SetLineColor(tx);
+				this->SetBkColor(bk);
+			}
+
+			void SubclassWindow(HWND wnd) {
+				WIN32_OP_D( __super::SubclassWindow(wnd) );
+				this->ApplyDark();
+			}
+
+			LRESULT OnSetDarkMode(UINT, WPARAM wp, LPARAM) {
+				switch (wp) {
+				case 0: SetDark(false); break;
+				case 1: SetDark(true); break;
+				}
+				return 1;
+			}
+		};
+
 		class CDialogHook : public CWindowImpl<CDialogHook> {
 			bool m_enabled;
 		public:
@@ -843,6 +894,9 @@ namespace DarkMode {
 			}
 
 			void Paint(CDCHandle dc) {
+				CRect rcClient; WIN32_OP_D(GetClientRect(rcClient));
+				dc.FillSolidRect(rcClient, GetSysColor(COLOR_BTNFACE)); // Wine seems to not call our WM_ERASEBKGND handler, fill the background here too
+
 				dc.SelectFont(GetFont());
 				dc.SetBkMode(TRANSPARENT);
 				dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
@@ -891,7 +945,6 @@ namespace DarkMode {
 					}
 
 					if (GetStyle() & SBARS_SIZEGRIP) {
-						CRect rcClient; WIN32_OP_D(GetClientRect(rcClient));
 						CSize size;
 						auto theme = OpenThemeData(*this, L"status");
 						PFC_ASSERT(theme != NULL);
@@ -1568,7 +1621,18 @@ namespace DarkMode {
 		AddCtrlMsg(wnd);
 	}
 	void CHooks::AddComboBox(HWND wnd) {
-		addOp([wnd, this] { SetWindowTheme(wnd, m_dark ? L"DarkMode_CFD" : L"Explorer", NULL);});
+		{
+			CComboBox combo = wnd;
+			COMBOBOXINFO info = {sizeof(info)};
+			WIN32_OP_D( combo.GetComboBoxInfo(&info) );
+			if (info.hwndList != NULL) {
+				AddListBox( info.hwndList );
+			}
+		}
+
+		addOp([wnd, this] { 
+			SetWindowTheme(wnd, m_dark ? L"DarkMode_CFD" : L"Explorer", NULL);
+		});
 	}
 	void CHooks::AddComboBoxEx(HWND wnd) {
 		this->AddControls(wnd); // recurse to add the combo box
@@ -1653,14 +1717,9 @@ namespace DarkMode {
 	}
 
 	void CHooks::AddTreeView(HWND wnd) {
-		this->addOp([wnd, this] {
-			CTreeViewCtrl tv(wnd);
-			ApplyDarkThemeCtrl(tv, m_dark);
-			COLORREF bk = m_dark ? GetSysColor(COLOR_WINDOW) : (COLORREF)(-1);
-			COLORREF tx = m_dark ? GetSysColor(COLOR_WINDOWTEXT) : (COLORREF)(-1);
-			tv.SetTextColor(tx); tv.SetLineColor(tx);
-			tv.SetBkColor(bk);
-		});
+		auto hook = new ImplementOnFinalMessage<CTreeViewHook>(m_dark);
+		hook->SubclassWindow(wnd);
+		this->AddCtrlMsg(wnd);
 	}
 	void CHooks::AddListBox(HWND wnd) {
 		this->AddGeneric( wnd );
