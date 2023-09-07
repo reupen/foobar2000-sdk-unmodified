@@ -3,6 +3,8 @@
 #include "DarkMode.h"
 
 namespace DarkMode {
+	static constexpr COLORREF colorHyperLink = 0xCC6600; // taken from screenshot of syslink
+
 	template<typename impl_t> class CHyperLinkImpl : public ::CHyperLinkImpl<impl_t> {
 	public:
 		BEGIN_MSG_MAP_EX(CDarkHyperLinkImpl)
@@ -16,8 +18,8 @@ namespace DarkMode {
 
 			if (bDark != m_isDark) {
 				m_isDark = bDark;
-				m_clrLink = bDark ? DarkMode::GetSysColor(COLOR_HOTLIGHT) : m_clrLinkBackup; 
-				Invalidate();
+				this->m_clrLink = bDark ? colorHyperLink : m_clrLinkBackup; 
+				this->Invalidate();
 			}
 
 			return 1;

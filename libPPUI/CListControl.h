@@ -282,7 +282,7 @@ public:
 	COLORREF GridColor();
 
 	void SetDarkMode(bool bDark);
-	void RefreshDarkMode();
+	virtual void RefreshDarkMode();
 	bool GetDarkMode() const { return m_darkMode; }
 private:
 	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);

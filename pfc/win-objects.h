@@ -337,4 +337,10 @@ namespace pfc {
 	pfc::string8 format_window(HWND wnd);
 	pfc::string8 format_windowStyle(DWORD);
 #endif // PFC_WINDOWS_DESKTOP_APP
+
+	int winNaturalSortCompare(const char* s1, const char* s2);
+	int winNaturalSortCompare(const wchar_t* s1, const wchar_t* s2);
+	int winNaturalSortCompareI(const char* s1, const char* s2);
+	int winNaturalSortCompareI(const wchar_t* s1, const wchar_t* s2);
+
 }

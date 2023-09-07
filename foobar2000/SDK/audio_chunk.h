@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pfc/audio_sample.h>
+#include <pfc/memalign.h>
 #include "exception_io.h"
 
 #ifdef _WIN32
@@ -220,10 +221,10 @@ public:
 	void pad_with_silence_ex(t_size samples,unsigned hint_nch,unsigned hint_srate);
 	//! Appends silent samples at the end of the chunk. \n
 	//! The chunk must have valid sample rate & channel count prior to this call.
-	//! @param Number of silent samples to append.s
+	//! @param samples Number of silent samples to append.s
 	void pad_with_silence(t_size samples);
 	//! Inserts silence at the beginning of the audio chunk.
-	//! @param Number of silent samples to insert.
+	//! @param samples Number of silent samples to insert.
 	void insert_silence_fromstart(t_size samples);
 	//! Helper; removes N first samples from the chunk. \n
 	//! If the chunk contains fewer samples than requested, it becomes empty.
@@ -239,7 +240,7 @@ public:
 	//! Any existing audio sdata will be discarded. \n
 	//! Expects sample rate and channel count to be set first. \n
 	//! Also allocates memory for the requested amount of data see: set_data_size().
-	//! @param samples Desired duration in seconds.
+	//! @param seconds Desired duration in seconds.
 	void set_silence_seconds( double seconds );
 
 	//! Helper; skips first samples of the chunk updating a remaining to-skip counter.

@@ -2,6 +2,7 @@
 #include <vsstyle.h>
 #include "Controls.h"
 #include "PaintUtils.h"
+#include "HyperLinkCtrl.h"
 
 void CStaticSeparator::OnPaint(CDCHandle) {
 	PaintUtils::PaintSeparatorControl(*this);
@@ -50,3 +51,32 @@ void CStaticThemed::OnPaint(CDCHandle) {
 	}
 }
 #endif
+
+
+#include "DarkMode-CHyperLink.h"
+#include "windowLifetime.h"
+
+void PP::createHyperLink(HWND wndReplaceMe) {
+	auto obj = PP::subclassThisWindow<DarkMode::CHyperLink>(wndReplaceMe);
+	obj->SetHyperLinkExtendedStyle(HLINK_NOTIFYBUTTON);
+}
+
+namespace {
+	class CHyperLinkLambda : public DarkMode::CHyperLinkImpl<CHyperLinkLambda> {
+	public:
+		std::function<void ()> f;
+		bool Navigate() {
+			f();
+			return true;
+		}
+	};
+}
+void PP::createHyperLink(HWND wndReplaceMe, std::function<void ()> handler) {
+	auto obj = PP::subclassThisWindow<CHyperLinkLambda>(wndReplaceMe);
+	obj->f = handler;
+}
+
+void PP::createHyperLink(HWND wndReplaceMe, const wchar_t* openURL) {
+	auto obj = PP::subclassThisWindow<DarkMode::CHyperLink>(wndReplaceMe);
+	obj->SetHyperLink(openURL);
+}

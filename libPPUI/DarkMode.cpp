@@ -109,9 +109,10 @@ Full custom draw
 SetWindowTheme(wnd, L"", L""); works but not 100% pretty, disabled text ugly in particular
 Full custom draw preferred
 
-== Group box
+== Group box ===
 SetWindowTheme(wnd, L"", L""); works but not 100% pretty, disabled text ugly in particular
-Full custom draw preferred
+Full custom draw preferred (we don't do this).
+Avoid disabling groupboxes / use something else.
 
 ==== NOTES ====
 AllowDarkModeForWindow() needs SetPreferredAppMode() to take effect, hence we implicitly call it
@@ -270,6 +271,7 @@ namespace DarkMode {
 	}
 
 	void ApplyDarkThemeCtrl(HWND ctrl, bool bDark, const wchar_t* ThemeID) {
+		if ( ctrl == NULL ) return;
 		// Both ways work
 		// DarkMode_Theme approach doesn't require evil undocumented MS API calls though
 		AllowDarkModeForWindow(ctrl, bDark);
@@ -378,17 +380,13 @@ namespace DarkMode {
 		return false;
 	}
 
-	static bool IsHighContrastImpl()
-	{
+	bool IsHighContrast() {
 		HIGHCONTRASTW highContrast = { sizeof(highContrast) };
 		if (SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, FALSE))
-			return highContrast.dwFlags & HCF_HIGHCONTRASTON;
+			return (highContrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
 		return false;
 	}
-	bool IsHighContrast() {
-		static bool v = IsHighContrastImpl();
-		return v;
-	}
+
 	static void DrawTab(CTabCtrl& tabs, CDCHandle dc, int iTab, bool selected, bool focused, const RECT * rcPaint) {
 		(void)focused;
 		PFC_ASSERT((tabs.GetStyle() & TCS_VERTICAL) == 0);
@@ -510,7 +508,7 @@ namespace DarkMode {
 		class CToolbarHook {
 			bool m_dark = false;
 			const bool m_explorerTheme;
-			CWindow m_wnd;
+			CToolBarCtrl m_wnd;
 		public:
 			CToolbarHook(HWND wnd, bool initial, bool bExplorerTheme) : m_wnd(wnd), m_explorerTheme(bExplorerTheme) {
 				SetDark(initial);
@@ -527,6 +525,8 @@ namespace DarkMode {
 					if (m_explorerTheme) ::SetWindowTheme(m_wnd, L"Explorer", NULL);
 				}
 				m_wnd.Invalidate();
+
+				ApplyDarkThemeCtrl(m_wnd.GetToolTips(), v);
 			}
 			~CToolbarHook() {
 				if (m_dark) lstDark_clear(m_wnd);
@@ -580,6 +580,8 @@ namespace DarkMode {
 		void CTabsHook::SetDark(bool v) {
 			m_dark = v;
 			if (m_hWnd != NULL) Invalidate();
+
+			ApplyDarkThemeCtrl(GetToolTips(), v);
 		}
 
 		class CTreeViewHook : public CWindowImpl<CTreeViewHook, CTreeViewCtrl> {
@@ -616,6 +618,8 @@ namespace DarkMode {
 				COLORREF tx = m_dark ? GetSysColor(COLOR_WINDOWTEXT) : (COLORREF)(-1);
 				this->SetTextColor(tx); this->SetLineColor(tx);
 				this->SetBkColor(bk);
+
+				ApplyDarkThemeCtrl(GetToolTips(), m_dark);
 			}
 
 			void SubclassWindow(HWND wnd) {
@@ -1046,7 +1050,8 @@ namespace DarkMode {
 				GetParent().SendMessage(WM_CTLCOLORBTN, (WPARAM)dc.m_hDC, (LPARAM)m_hWnd);
 				if (bDisabled) dc.SetTextColor(DarkMode::GetSysColor(COLOR_GRAYTEXT)); // override WM_CTLCOLORBTN
 
-				const DWORD btnType = GetStyle() & BS_TYPEMASK;
+				const DWORD btnStyle = GetStyle();
+				const DWORD btnType = btnStyle & BS_TYPEMASK;
 				const bool bRadio = (btnType == BS_RADIOBUTTON || btnType == BS_AUTORADIOBUTTON);
 				const int part = bRadio ? BP_RADIOBUTTON : BP_CHECKBOX;
 
@@ -1117,7 +1122,12 @@ namespace DarkMode {
 				if (!text.IsEmpty()) {
 					CRect rcText = rcClient;
 					rcText.left += margin;
-					UINT dtFlags = DT_VCENTER | DT_END_ELLIPSIS | DT_SINGLELINE;
+					UINT dtFlags = DT_VCENTER;
+					if (btnStyle & BS_MULTILINE) {
+						dtFlags |= DT_WORDBREAK;
+					} else {
+						dtFlags |= DT_END_ELLIPSIS | DT_SINGLELINE;
+					}
 					dc.DrawText(text, text.GetLength(), rcText, dtFlags);
 					if (bFocus) {
 						dc.DrawText(text, text.GetLength(), rcText, DT_CALCRECT | dtFlags);

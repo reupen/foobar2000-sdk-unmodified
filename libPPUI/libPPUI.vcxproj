@@ -362,6 +362,7 @@
     <ClInclude Include="GDIUtils.h" />
     <ClInclude Include="gesture.h" />
     <ClInclude Include="hookWindowMessages.h" />
+    <ClInclude Include="HyperLinkCtrl.h" />
     <ClInclude Include="IDataObjectUtils.h" />
     <ClInclude Include="ImageEncoder.h" />
     <ClInclude Include="ImplementOnFinalMessage.h" />

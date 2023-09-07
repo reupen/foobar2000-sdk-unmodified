@@ -515,6 +515,19 @@ namespace pfc {
 	pfc::string8 unicodeNormalizeC(const char* str) {
 		return winUnicodeNormalize(str, NormalizationC);
 	}
+
+	int winNaturalSortCompare(const char* s1, const char* s2) {
+		return winNaturalSortCompare(wideFromUTF8(s1), wideFromUTF8(s2));
+	}
+	int winNaturalSortCompare(const wchar_t* s1, const wchar_t* s2) {
+		return lstrcmp(s1, s2);
+	}
+	int winNaturalSortCompareI(const char* s1, const char* s2) {
+		return winNaturalSortCompareI(wideFromUTF8(s1), wideFromUTF8(s2));
+	}
+	int winNaturalSortCompareI(const wchar_t* s1, const wchar_t* s2) {
+		return lstrcmpi(s1, s2);
+	}
 }
 
 #endif // _WIN32

@@ -1,9 +1,13 @@
 #include "stdafx.h"
-#include "resource.h"
-#include <helpers/atl-misc.h>
+
 #include <helpers/advconfig_impl.h>
 #include <SDK/cfg_var.h>
+
+#ifdef _WIN32
+#include "resource.h"
+#include <helpers/atl-misc.h>
 #include <helpers/DarkMode.h>
+#endif // _WIN32
 
 // Sample preferences interface: two meaningless configuration settings accessible through a preferences page and one accessible through advanced preferences.
 
@@ -52,7 +56,10 @@ enum {
 	order_bogoRadio3,
 };
 
-static cfg_uint cfg_bogoSetting1(guid_cfg_bogoSetting1, default_cfg_bogo1), cfg_bogoSetting2(guid_cfg_bogoSetting2, default_cfg_bogo2);
+namespace foo_sample { // accessed also from Mac specific code hence not static
+    cfg_uint cfg_bogoSetting1(guid_cfg_bogoSetting1, default_cfg_bogo1), cfg_bogoSetting2(guid_cfg_bogoSetting2, default_cfg_bogo2);
+}
+using namespace foo_sample;
 
 static advconfig_branch_factory g_advconfigBranch("Sample Component", guid_advconfig_branch, advconfig_branch::guid_branch_tools, 0);
 static advconfig_integer_factory cfg_bogoSetting3("Bogo setting 3","foo_sample.bogo3", guid_cfg_bogoSetting3, guid_advconfig_branch, order_bogo3, default_cfg_bogo3, 0 /*minimum value*/, 9999 /*maximum value*/);
@@ -63,6 +70,7 @@ static advconfig_radio_factory cfg_bogoRadio1("Radio 1", "foo_sample.bogoRaidio.
 static advconfig_radio_factory cfg_bogoRadio2("Radio 2", "foo_sample.bogoRaidio.2", guid_cfg_bogoRadio2, guid_cfg_bogoRadio, order_bogoRadio2, false);
 static advconfig_radio_factory cfg_bogoRadio3("Radio 3", "foo_sample.bogoRaidio.3", guid_cfg_bogoRadio3, guid_cfg_bogoRadio, order_bogoRadio3, false);
 
+#ifdef _WIN32
 class CMyPreferences : public CDialogImpl<CMyPreferences>, public preferences_page_instance {
 public:
 	//Constructor - invoked by preferences_page_impl helpers - don't do Create() in here, preferences_page_impl does this for us
@@ -148,10 +156,11 @@ public:
 	const char * get_name() {return "Sample Component";}
 	GUID get_guid() {
 		// This is our GUID. Replace with your own when reusing the code.
-		static const GUID guid = { 0x7702c93e, 0x24dc, 0x48ed, { 0x8d, 0xb1, 0x3f, 0x27, 0xb3, 0x8c, 0x7c, 0xc9 } };
-		return guid;
+		return GUID { 0x7702c93e, 0x24dc, 0x48ed, { 0x8d, 0xb1, 0x3f, 0x27, 0xb3, 0x8c, 0x7c, 0xc9 } };
 	}
 	GUID get_parent_guid() {return guid_tools;}
 };
 
 static preferences_page_factory_t<preferences_page_myimpl> g_preferences_page_myimpl_factory;
+#endif // _WIN32
+

@@ -3,8 +3,8 @@
 // foobar2000 SDK version and target API levels are declared in this header
 
 // This SDK does NOT SUPPORT targets older than API 80 / foobar2000 v1.5
-#define FOOBAR2000_TARGET_VERSION 80 // 1.5, 1.6
-// #define FOOBAR2000_TARGET_VERSION 81 // 2.0
+// #define FOOBAR2000_TARGET_VERSION 80 // 1.5, 1.6
+#define FOOBAR2000_TARGET_VERSION 81 // 2.0
 
 #ifdef _M_IX86
 #define FOOBAR2000_TARGET_VERSION_COMPATIBLE 72
