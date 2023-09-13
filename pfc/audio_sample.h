@@ -62,6 +62,12 @@ namespace pfc {
 		static inline double scale_to_gain(double scale) { return 20.0*log10(scale); }
 
 		static unsigned bitrate_kbps( uint64_t fileSize, double duration );
+
+		static constexpr float float16scale = 65536.f;
+
+		static float decodeFloat24ptr(const void* sourcePtr);
+		static float decodeFloat24ptrbs(const void* sourcePtr);
+		static float decodeFloat16(uint16_t source);
 	}; // class audio_math
 
 } // namespace pfc

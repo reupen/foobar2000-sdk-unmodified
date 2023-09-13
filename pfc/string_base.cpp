@@ -337,9 +337,11 @@ static double pfc_string_to_float_internal(const char * src) noexcept
     return (double) val * exp_int(10, div);
 }
 
+double string_to_float(const char * src) noexcept {
+    return pfc_string_to_float_internal(src);
+}
 double string_to_float(const char * src,t_size max) noexcept {
-	//old function wants an oldstyle nullterminated string, and i don't currently care enough to rewrite it as it works appropriately otherwise
-	char blargh[128];
+    char blargh[128];
 	if (max > 127) max = 127;
 	t_size walk;
 	for(walk = 0; walk < max && src[walk]; walk++) blargh[walk] = src[walk];

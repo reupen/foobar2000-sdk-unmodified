@@ -206,7 +206,7 @@ public:
 	void set_data_fixedpoint_ms(const void * ptr, size_t bytes, unsigned sampleRate, unsigned channels, unsigned bps, unsigned channelConfig);
 
 	void set_data_floatingpoint_ex(const void * ptr,t_size bytes,unsigned p_sample_rate,unsigned p_channels,unsigned p_bits_per_sample,unsigned p_flags,unsigned p_channel_config);//signed/unsigned flags dont apply
-	static bool is_supported_floatingpoint(unsigned bps) { return bps == 32 || bps == 64; }
+	static bool is_supported_floatingpoint(unsigned bps) { return bps == 32 || bps == 64 || bps == 16 || bps == 24; }
 
 	void set_data_32(const float* src, t_size samples, unsigned nch, unsigned srate);
 	void set_data_32(const float* src, t_size samples, spec_t const & spec );
