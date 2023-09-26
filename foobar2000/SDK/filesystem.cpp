@@ -84,7 +84,7 @@ void file::g_transfer_object(stream_reader * p_src,stream_writer * p_dst,t_files
 
 void filesystem::g_get_canonical_path(const char * path,pfc::string_base & out)
 {
-	TRACK_CALL_TEXT("filesystem::g_get_canonical_path");
+	// TRACK_CALL_TEXT("filesystem::g_get_canonical_path");
 	for (auto ptr : enumerate()) {
 		if (ptr->get_canonical_path(path, out)) return;
 	}
@@ -92,9 +92,28 @@ void filesystem::g_get_canonical_path(const char * path,pfc::string_base & out)
 	out = path;
 }
 
+void filesystem::g_get_display_path(const char* path, pfc::string_base& out, filesystem::ptr& reuseMe) {
+
+	if (reuseMe.is_valid() && reuseMe->is_our_path(path)) {
+		if (!reuseMe->get_display_path(path, out)) {
+			// should not get here
+			out = path;
+		}
+	} else {
+		if (!g_get_interface(reuseMe, path)) {
+			out = path;
+			return;
+		}
+		if (!reuseMe->get_display_path(path, out)) {
+			// should not get here
+			out = path;
+		}
+	}
+}
+
 void filesystem::g_get_display_path(const char * path,pfc::string_base & out)
 {
-	TRACK_CALL_TEXT("filesystem::g_get_display_path");
+	// TRACK_CALL_TEXT("filesystem::g_get_display_path");
 	service_ptr_t<filesystem> ptr;
 	if (!g_get_interface(ptr,path))
 	{
@@ -155,7 +174,7 @@ bool filesystem::g_get_interface(service_ptr_t<filesystem> & p_out,const char * 
 
 	for (auto ptr : enumerate()) {
 		if (ptr->is_our_path(path)) {
-			p_out = ptr;
+			p_out = std::move(ptr);
 			return true;
 		}
 	}
@@ -1437,7 +1456,7 @@ bool foobar2000_io::testIfHasProtocol( const char * input ) {
 
 bool foobar2000_io::matchProtocol(const char * fullString, const char * protocolName) {
     const t_size len = strlen(protocolName);
-    if (pfc::stricmp_ascii_ex(fullString, len, protocolName, len) != 0) return false;
+    if (!pfc::stringEqualsI_ascii_ex(fullString, len, protocolName, len)) return false;
     return fullString[len] == ':' && fullString[len+1] == '/' && fullString[len+2] == '/';
 }
 void foobar2000_io::substituteProtocol(pfc::string_base & out, const char * fullString, const char * protocolName) {

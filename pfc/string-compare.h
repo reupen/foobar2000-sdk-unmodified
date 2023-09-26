@@ -21,6 +21,7 @@ namespace pfc {
 
 	bool stringEqualsI_utf8(const char* p1, const char* p2) throw();
 	bool stringEqualsI_ascii(const char* p1, const char* p2) throw();
+	bool stringEqualsI_ascii_ex(const char* p1, size_t l1, const char* p2, size_t l2) throw();
 
 	int stringCompareCaseInsensitive(const char* s1, const char* s2);
 	int stringCompareCaseInsensitiveEx(string_part_ref s1, string_part_ref s2);

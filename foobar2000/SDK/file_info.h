@@ -23,6 +23,10 @@ struct replaygain_info
 	inline bool format_album_peak(char p_buffer[text_buffer_size]) const {return g_format_peak(m_album_peak,p_buffer);}
 	inline bool format_track_peak(char p_buffer[text_buffer_size]) const {return g_format_peak(m_track_peak,p_buffer);}
 
+
+	typedef std::function<void(const char*, const char*)> for_each_t;
+	void for_each(for_each_t) const;
+
 	static float g_parse_gain_text(const char * p_text, t_size p_text_len = SIZE_MAX);
 	void set_album_gain_text(const char * p_text,t_size p_text_len = SIZE_MAX);
 	void set_track_gain_text(const char * p_text,t_size p_text_len = SIZE_MAX);

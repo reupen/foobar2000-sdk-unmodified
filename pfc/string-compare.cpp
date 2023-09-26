@@ -19,6 +19,19 @@ namespace pfc {
         }
     }
 
+    bool stringEqualsI_ascii_ex(const char* s1, size_t len1, const char* s2, size_t len2) throw() {
+        t_size walk1 = 0, walk2 = 0;
+        for (;;) {
+            char c1 = (walk1 < len1) ? s1[walk1] : 0;
+            char c2 = (walk2 < len2) ? s2[walk2] : 0;
+            c1 = ascii_tolower(c1); c2 = ascii_tolower(c2);
+            if (c1 != c2) return false;
+            if (c1 == 0) return true;
+            walk1++;
+            walk2++;
+        }
+    }
+
     int stricmp_ascii_ex(const char* const s1, t_size const len1, const char* const s2, t_size const len2) throw() {
         t_size walk1 = 0, walk2 = 0;
         for (;;) {
@@ -31,7 +44,6 @@ namespace pfc {
             walk1++;
             walk2++;
         }
-
     }
 
     int wstricmp_ascii(const wchar_t* s1, const wchar_t* s2) throw() {
